@@ -4,8 +4,7 @@ const avro = require('avsc');
 const AWS = require('aws-sdk')
 const crypto = require('crypto')
 const kinesis = new AWS.Kinesis({region: 'us-east-1'})
-
-console.log("Going to call main function");
+const wrapper = require('sierra-wrapper')
 
 //main function
 exports.handler = function(event, context){
@@ -20,9 +19,18 @@ var kinesisHandler = function(records, context) {
   console.log('Processing ' + records.length + ' records');
   var url = "https://api.nypltech.org/api/v0.1/current-schemas/SierraItemRetrievalRequest";
   schema(url)
-    .then(function(data) {
-      console.log(data);
-      context.done();
+    .then(function(schema_data) {
+      records.forEach(function(record){
+        var data = record.kinesis.data;
+        var json_data = avro_decoded_data(schema_data, data);
+        bib_in_detail(json_data.id)
+          .then(function(bibDetail) {
+            console.log(bibDetail);
+          })
+      });
+    })
+    .catch(function(e){
+      console.log(e);
     });
 }
 
@@ -40,6 +48,35 @@ var schema = function(url, context) {
     })
   })
 }
+
+//use avro to deserialize
+var avro_decoded_data = function(schema_data, record){
+  const type = avro.parse(schema_data);
+  var decoded = new Buffer(record, 'base64');
+  var verify = type.fromBuffer(decoded);
+  return JSON.parse(verify);
+}
+
+//get full bib details for each bib
+var loadedConfig = wrapper.loadConfig('config.json');
+var bib_in_detail = function(bibId) {
+  return new Promise(function (resolve, reject) {
+    wrapper.auth((error, results) => {
+      if (error){
+        console.log(error);
+        reject("Error occurred while getting bib details - " + error);
+      }
+      wrapper.requestSingleBib(bibId, (errorBibReq, results) => {
+        if(errorBibReq) console.log(errorBibReq);
+        var entries = results.data.entries;
+        var entry = entries[0];
+        resolve(JSON.stringify(entry));
+      });
+    });
+  })
+}
+
+
 
 // var params = {
 //   StreamName: 'SierraBibPostRequestTest' /* required */
