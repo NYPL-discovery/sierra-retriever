@@ -24,8 +24,8 @@ var kinesisHandler = function(records, context) {
         var data = record.kinesis.data;
         var json_data = avro_decoded_data(schema_data, data);
         bib_in_detail(json_data.id)
-          .then(function(bibDetail) {
-            console.log(bibDetail);
+          .then(function(bib) {
+            postBibsStream(bib);
           })
       });
     })
@@ -70,11 +70,30 @@ var bib_in_detail = function(bibId) {
         if(errorBibReq) console.log(errorBibReq);
         var entries = results.data.entries;
         var entry = entries[0];
-        resolve(JSON.stringify(entry));
+        resolve(entry);
       });
     });
   })
 }
+
+//send data to kinesis Stream
+var postBibsStream = function(bib){
+  const type = avro.infer(bib);
+  console.log(type.getSchema());
+  const bib_in_avro_format = type.toBuffer(bib);
+  var params = {
+    Data: bib_in_avro_format, /* required */
+    PartitionKey: crypto.randomBytes(20).toString('hex').toString(), /* required */
+    StreamName: 'testBibRetrieval', /* required */
+  }
+  kinesis.putRecord(params, function (err, data) {
+    if (err) console.log(err, err.stack) // an error occurred
+    else     console.log(data)           // successful response
+    //cb(null,data)
+  })
+
+}
+
 
 
 
