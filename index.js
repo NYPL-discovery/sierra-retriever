@@ -70,6 +70,7 @@ var bib_in_detail = function(bibId) {
         if(errorBibReq) console.log(errorBibReq);
         var entries = results.data.entries;
         var entry = entries[0];
+        console.log(JSON.stringify(entry));
         resolve(entry);
       });
     });
@@ -93,29 +94,3 @@ var postBibsStream = function(bib){
   })
 
 }
-
-
-
-
-// var params = {
-//   StreamName: 'SierraBibPostRequestTest' /* required */
-// };
-// kinesis.describeStream(params, function(err, data) {
-//   if (err) console.log(err, err.stack); // an error occurred
-//   else     console.log(JSON.stringify(data,null,2));           // successful response
-
-  // var id = crypto.randomBytes(20).toString('hex').toString()
-  //
-  // var params = {
-  //   Data: JSON.stringify(['whats up','whats up','whats up','whats up','whats up']), /* required */
-  //   PartitionKey: id, /* required */
-  //   StreamName: 'SierraBibPostRequestTest'
-  // }
-  // kinesis.putRecord(params, (err, data) => {
-  //   if (err) console.log(err, err.stack) // an error occurred
-  //   else     console.log(data)           // successful response
-  //
-  // })
-
-
-// });
