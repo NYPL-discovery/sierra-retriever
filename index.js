@@ -21,7 +21,6 @@ exports.handler = function(event, context){
 //kinesis stream handler
 var kinesisHandler = function(records, context) {
   console.log('Processing ' + records.length + ' records');
-  fs.readFile('config.json')
   configValsAsJSON('config.json', 'utf-8')
   .then(function(jsonContents){
     var schema_url = jsonContents.schema_url;
@@ -44,7 +43,7 @@ var kinesisHandler = function(records, context) {
 }
 
 //get configuration values
-var configValsAsJSON = function(fileName, encoding){
+var configValsAsJSON = function(fileName, encoding, result){
   return new Promise(function(resolve, reject){
     fs.readFile(fileName, encoding, function(err, data){
       if (err){
