@@ -19,7 +19,8 @@
     "avsc": "^4.1.11",
     "aws-sdk": "^2.14.0",
     "highland": "^2.10.2",
-    "sierra-wrapper": "^0.1.0"
+    "sierra-wrapper": "^0.1.0",
+    "config":"^1.25.1"
   },
   "devDependencies": {
     "mocha": "^3.2.0",
