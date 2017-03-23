@@ -8,6 +8,7 @@ const wrapper = require('sierra-wrapper')
 const config = require('config')
 
 var schema_stream_retriever = null;
+var wrapper_access_token = null;
 
 //main function
 exports.handler = function(event, context){
@@ -74,20 +75,47 @@ var avro_decoded_data = function(schema_data, record){
 var loadedConfig = wrapper.loadConfig('./config/default.json');
 var bib_in_detail = function(bibId) {
   return new Promise(function (resolve, reject) {
-    wrapper.auth((error, authResults) => {
-      if (error){
-        console.log(error);
-        reject("Error occurred while getting bib details - " + error);
+    set_wrapper_access_token()
+    .then(function (access_token){
+      console.log('access token is - ' + access_token);
+      wrapper_access_token = access_token;
+      var single_bib = single_bib(bibId);
+      resolve(single_bib);
+    })
+    .catch(function (e) {
+      console.log(e, e.stack);
+      reject('Error occurred while getting bib information');
+    })
+  })
+}
+
+//get wrapper access token
+var set_wrapper_access_token = function(){
+  return new Promise(function(resolve, reject){
+    wrapper.auth(function (error, authResults){
+      if(error){
+        console.log(error, error.stack);
+        reject ("Error occurred while getting access token");
       }
-      wrapper.requestSingleBib(bibId, (errorBibReq, results) => {
-        if(errorBibReq) console.log(errorBibReq);
+      resolve (wrapper.authorizedToken);
+    });
+  });
+}
+
+//get single bib
+var single_bib = function(bibId){
+  return new Promise(function(resolve, reject){
+    wrapper.requestSingleBib(bibId, (errorBibReq, results) => {
+        if(errorBibReq){
+          console.log(errorBibReq), errorBibReq.stack;
+          reject('Error occurred while getting bib info');
+        } 
         var entries = results.data.entries;
         var entry = entries[0];
         console.log(JSON.stringify(entry));
         resolve(entry);
-      });
     });
-  })
+  });
 }
 
 //send data to kinesis Stream
