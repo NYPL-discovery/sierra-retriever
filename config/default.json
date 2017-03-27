@@ -2,7 +2,15 @@
     "key": "",
     "secret": "",
     "base": "",
-    "schema_retrieval_url": "",
-    "schema_poster_url": "",
-    "stream": ""
+    "bib":{
+        "schema_retrieval_url": "",
+        "schema_poster_url": "",
+        "stream": ""
+    },
+    "item":{
+        "schema_retrieval_url": "",
+        "schema_poster_url": "",
+        "stream": ""
+    },
+    "isABib": false
 }
