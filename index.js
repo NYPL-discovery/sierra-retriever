@@ -39,13 +39,13 @@ var kinesisHandler = function(records, context) {
           processResources(records, schema_data);
         }
       })
-    .catch(function(e){
-      console.log(e, e.stack);
-    });
-  }else{
+      .catch(function(e){
+        console.log(e, e.stack);
+      });
+  } else {
     if(wrapper_access_token === null){
       setGlobalAccessTokenAndProcessResources(records, schema_stream_retriever);
-    }else{
+    } else {
       processResources(records, schema_stream_retriever);
     }
   }
@@ -74,7 +74,7 @@ var processResources = function(records, schema_data){
           .catch(function (e){
             console.log(e);
           });
-      }else{
+      } else {
         resource_in_detail(json_data.id, false)
           .then(function(item){
             var stream = config.get('item.stream');
@@ -92,7 +92,7 @@ var schema = function(url) {
       request(url, function(error, response, body) {
         if(!error && response.statusCode == 200){
           resolve(JSON.parse(body).data.schema);
-        }else{
+        } else {
           console.log("An error occurred - " + response.statusCode);
           reject("Error occurred while getting schema - " + response.statusCode);
         }
@@ -122,15 +122,15 @@ var resource_in_detail = function(id, isBib){
       if(isBib){
         console.log('Requesting for bib info');
         wrapper.requestSingleBib(id, (errorBibReq, results) => {
-        getResult(errorBibReq, results, true, id, operation, currentAttempt)
-            .then(function(entry){
-              resolve (entry);
-            })
-            .catch (function(e) {
-              reject (e);
-            });
+          getResult(errorBibReq, results, true, id, operation, currentAttempt)
+              .then(function(entry){
+                resolve (entry);
+              })
+              .catch (function(e) {
+                reject (e);
+              });
         });
-      } else{
+      } else {
         console.log('Requesting for item info');
         var itemIds = [id];
         wrapper.requestMultiItemBasic(itemIds, (errorItemReq, results) => {
@@ -155,7 +155,7 @@ var getResult = function(errorResourceReq, results, isBib, resourceId, operation
           console.log("This is a token issue. Going to renew token");
           if(isBib) {
             console.log('Number of attempts made for bib ' + resourceId + ' - ' + attemptNumber);
-          } else{
+          } else{ 
             console.log('Number of attempts made for item ' + resourceId + ' - ' + attemptNumber);
           }
           set_wrapper_access_token()
