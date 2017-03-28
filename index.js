@@ -30,8 +30,6 @@ var kinesisHandler = function(records, context, callback) {
   }
   wrapper.loadConfig(conf)
 
-  // wrapper.loadConfig('./config/default.json');
-
   // Make sure wrapper_access_token is set:
   set_wrapper_access_token()
     // Make sure schema is fetched:
