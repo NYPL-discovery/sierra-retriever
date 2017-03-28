@@ -1,7 +1,7 @@
 {
   "name": "sierra-retriever",
   "version": "0.0.1",
-  "description": "The purpose of this service is to read sierra bib/item ids from the SierraBibRequest/SierraItemRequest stream, retrieves those records from the sierra-wrapper (https://www.npmjs.com/package/sierra-wrapper) and publishes them to the SierraBibPostRequest/SierraItemPostRequest Stream",
+  "description": "This service reads sierra bib/item ids from the Bib/Item request stream, retrieves those records from the sierra-wrapper (https://www.npmjs.com/package/sierra-wrapper) and publishes them to the bib/item poster Stream",
   "main": "index.js",
   "scripts": {
     "test": "mocha test"
