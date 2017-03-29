@@ -8,51 +8,74 @@ const wrapper = require('sierra-wrapper')
 const config = require('config')
 const retry = require('retry')
 
-var schema_stream_retriever = null;
-var wrapper_access_token = null;
-
 //main function
-exports.handler = function(event, context){
+exports.handler = function(event, context, callback) {
   var record = event.Records[0];
   if(record.kinesis){
-    kinesisHandler(event.Records, context);
+    kinesisHandler(event.Records, context, callback);
   }
 };
 
 //kinesis stream handler
-var kinesisHandler = function(records, context) {
+var kinesisHandler = function(records, context, callback) {
   console.log('Processing ' + records.length + ' records');
-  wrapper.loadConfig('./config/default.json');
-  if(schema_stream_retriever === null){
-    var schema_retrieval_url = null;
-    if(config.get('isABib')){
-     schema_retrieval_url = config.get('bib.schema_retrieval_url');
-    }else{
-      schema_retrieval_url = config.get('item.schema_retrieval_url');
-    }
-    schema(schema_retrieval_url)
-      .then(function(schema_data){
-        schema_stream_retriever = schema_data;
-        if(wrapper_access_token === null){
-            setGlobalAccessTokenAndProcessResources(records, schema_data);
-        }else{
-          processResources(records, schema_data);
-        }
-      })
-      .catch(function(e){
-        console.log(e, e.stack);
-      });
-  } else {
-    if(wrapper_access_token === null){
-      setGlobalAccessTokenAndProcessResources(records, schema_stream_retriever);
-    } else {
-      processResources(records, schema_stream_retriever);
-    }
+
+  var conf = {
+    key: config.get('key'),
+    secret: config.get('secret'),
+    base: config.get('base')
   }
+  wrapper.loadConfig(conf)
+
+  // Make sure wrapper_access_token is set:
+  set_wrapper_access_token()
+    // Make sure schema is fetched:
+    .then(getSchema)
+    // Now we're oauthed and have a parsed schema, so process the records:
+    .then((schema) => processResources(records, schema))
+    // Now tell the lambda enviroment whether there was an error or not:
+    .then((results) => {
+      var successes = 0
+      var failures = 0
+      results.forEach((result, ind) => {
+        if (result.error) failures += 1
+        else successes += 1
+      })
+      var error = null
+      if (failures > 0) error = `${failures} failed`
+      callback(error, `Wrote ${records.length}; Succeeded: ${successes} Failures: ${failures}`)
+    })
+    .catch((error) => {
+      console.log('calling callback with error')
+      callback(error)
+    })
+}
+
+var __schemaObject = null;
+
+var getSchema = function () {
+  // If we've already fetched it, return immediately:
+  if (__schemaObject) return Promise.resolve(__schemaObject)
+
+  // Otherwise, fetch it for first time:
+  var schema_retrieval_url = null;
+  if(config.get('isABib')){
+   schema_retrieval_url = config.get('bib.schema_retrieval_url');
+  }else{
+    schema_retrieval_url = config.get('item.schema_retrieval_url');
+  }
+  return schema(schema_retrieval_url)
+    .then((schemaObj) => {
+      __schemaObject = schemaObj
+      return __schemaObject
+    })
 }
 
 var setGlobalAccessTokenAndProcessResources = (function(records, schema_data){
-  set_wrapper_access_token()
+  // If we already have it, return immediately:
+  if (wrapper_access_token) return Promise.resolve()
+
+  return set_wrapper_access_token()
         .then(function(access_token){
           console.log('Access token is - ' + access_token);
           wrapper_access_token = access_token;
@@ -62,26 +85,36 @@ var setGlobalAccessTokenAndProcessResources = (function(records, schema_data){
 
 //process resources
 var processResources = function(records, schema_data){
-  records.forEach(function(record){
+  // records.forEach(function(record){
+  return Promise.all(
+    records.map((record) => {
       var data = record.kinesis.data;
       var json_data = avro_decoded_data(schema_data, data);
       if(config.get('isABib')){
-        resource_in_detail(json_data.id, true)
+        return resource_in_detail(json_data.id, true)
           .then(function(bib) {
             var stream = config.get('bib.stream');
-            postResourcesToStream(bib, stream);
+            return postResourcesToStream(bib, stream)
+              .then(() => ({ error: null, bib: bib }))
           })
-          .catch(function (e){
-            console.log(e);
-          });
-      } else {
-        resource_in_detail(json_data.id, false)
+          .catch((e) => {
+            console.log('Error with bib: ', e)
+            return { error: e, bib: json_data.id }
+          })
+      }else{
+        return resource_in_detail(json_data.id, false)
           .then(function(item){
             var stream = config.get('item.stream');
-            postResourcesToStream(item, stream);
+            return postResourcesToStream(item, stream)
+              .then(() => ({ error: null, item }))
+          })
+          .catch((e) => {
+            console.log('Error with item: ', e)
+            return { error: e, item: json_data.id }
           })
       }
-    });
+    })
+  );
 }
 
 //get schema
@@ -129,8 +162,8 @@ var resource_in_detail = function(id, isBib){
               .catch (function(e) {
                 reject (e);
               });
-        });
-      } else {
+          });
+      } else{
         console.log('Requesting for item info');
         var itemIds = [id];
         wrapper.requestMultiItemBasic(itemIds, (errorItemReq, results) => {
@@ -163,13 +196,13 @@ var getResult = function(errorResourceReq, results, isBib, resourceId, operation
               wrapper_access_token = access_token;
               if(operation.retry(errorResourceReq)){
                 return;
-                if(isBib){
-                  console.log('Error occurred while getting bib info');
-                } else {
-                  console.log('Error occurred while getting item info');
-                }
-                reject(errorResourceReq);
               }
+              if(isBib){
+                  console.log('Error occurred while getting bib info');
+              } else {
+                  console.log('Error occurred while getting item info');
+              }
+                reject(errorResourceReq);
             });
         }
       } else {
@@ -181,14 +214,19 @@ var getResult = function(errorResourceReq, results, isBib, resourceId, operation
   });
 }
 
+var __access_token = null
+
 //get wrapper access token
 var set_wrapper_access_token = function(){
+  if (__access_token) return Promise.resolve(__access_token)
+
   return new Promise(function(resolve, reject){
     wrapper.auth(function (error, authResults){
       if(error){
         console.log(error, error.stack);
         reject ("Error occurred while getting access token");
       }
+      __access_token = wrapper.authorizedToken
       resolve (wrapper.authorizedToken);
     });
   });
@@ -196,17 +234,22 @@ var set_wrapper_access_token = function(){
 
 //send data to kinesis Stream
 var postResourcesToStream = function(resource, stream){
-  const type = avro.infer(resource);
-  const resource_in_avro_format = type.toBuffer(resource);
-  var params = {
-    Data: resource_in_avro_format, // required 
-    PartitionKey: crypto.randomBytes(20).toString('hex').toString(), // required
-    StreamName: stream, // required 
-  }
-  kinesis.putRecord(params, function (err, data) {
-    if (err) console.log(err, err.stack) // an error occurred
-    else     console.log(data)           // successful response
-    //cb(null,data)
+  return new Promise((resolve, reject) => {
+    const type = avro.infer(resource);
+    const resource_in_avro_format = type.toBuffer(resource);
+    var params = {
+      Data: resource_in_avro_format, // required 
+      PartitionKey: crypto.randomBytes(20).toString('hex').toString(), // required
+      StreamName: stream, // required 
+    }
+    kinesis.putRecord(params, function (err, data) {
+      // if (err) console.log(err, err.stack) // an error occurred
+      // else     console.log(data)           // successful response
+      console.log('wrote to kinesis: ', data)
+      if (err) reject(err)
+      else resolve(data)
+      //cb(null,data)
+    })
   })
 }
   
