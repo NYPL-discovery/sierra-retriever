@@ -8,9 +8,6 @@ const wrapper = require('sierra-wrapper')
 const config = require('config')
 const retry = require('retry')
 
-var schema_stream_retriever = null;
-var wrapper_access_token = null;
-
 //main function
 exports.handler = function(event, context, callback) {
   var record = event.Records[0];
@@ -158,14 +155,14 @@ var resource_in_detail = function(id, isBib){
       if(isBib){
         console.log('Requesting for bib info');
         wrapper.requestSingleBib(id, (errorBibReq, results) => {
-        getResult(errorBibReq, results, true, id, operation, currentAttempt)
-            .then(function(entry){
-              resolve (entry);
-            })
-            .catch (function(e) {
-              reject (e);
-            });
-        });
+          getResult(errorBibReq, results, true, id, operation, currentAttempt)
+              .then(function(entry){
+                resolve (entry);
+              })
+              .catch (function(e) {
+                reject (e);
+              });
+          });
       } else{
         console.log('Requesting for item info');
         var itemIds = [id];
@@ -199,13 +196,13 @@ var getResult = function(errorResourceReq, results, isBib, resourceId, operation
               wrapper_access_token = access_token;
               if(operation.retry(errorResourceReq)){
                 return;
-                if(isBib){
-                  console.log('Error occurred while getting bib info');
-                } else {
-                  console.log('Error occurred while getting item info');
-                }
-                reject(errorResourceReq);
               }
+              if(isBib){
+                  console.log('Error occurred while getting bib info');
+              } else {
+                  console.log('Error occurred while getting item info');
+              }
+                reject(errorResourceReq);
             });
         }
       } else {
