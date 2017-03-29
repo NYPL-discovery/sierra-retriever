@@ -6,7 +6,8 @@ The purpose of this service is to read sierra bib/item ids from the SierraBibReq
 2. Assuming you have node installed properly in your machine, run npm install
 2. Run node-lambda setup, this should create a context.json, deploy.env and env files
 3. Create a local.json file under config and add the following keys to it:
-    ```{
+    ```
+    {
         "key": "your_sierra_api_key",
         "secret": "your_sierra_secret",
         "isABib": true or false
