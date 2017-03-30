@@ -6,14 +6,16 @@ The purpose of this service is to read sierra bib/item ids from the SierraBibReq
 2. Assuming you have node installed properly in your machine, run npm install
 2. Run node-lambda setup, this should create a context.json, deploy.env and env files
 3. Create a local.json file under config and add the following keys to it:
+    ```
     {
         "key": "your_sierra_api_key",
         "secret": "your_sierra_secret",
         "isABib": true or false
     }
+    ```
     local.json file should not be checked in and should be part of gitignore.
 4. In your .env file provide values as needed, here is a sample - 
-
+    ```
     AWS_ENVIRONMENT=development
     AWS_ACCESS_KEY_ID=APELOMDIH07AM7VROR4X
     AWS_SECRET_ACCESS_KEY=Mkp4JNpV10Ul+0z516hGnEPpiOC3xPvL4bd90tSZX
@@ -30,7 +32,8 @@ The purpose of this service is to read sierra bib/item ids from the SierraBibReq
     AWS_VPC_SUBNETS=
     AWS_VPC_SECURITY_GROUPS=
     EXCLUDE_GLOBS="event.json"
-    PACKAGE_DIRECTORY=build    
+    PACKAGE_DIRECTORY=build 
+    ```
 
 5. To run locally, the following event.json file is also added as part of the repo.
 Now run the following command, node-lambda run
