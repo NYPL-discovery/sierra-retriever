@@ -7,6 +7,7 @@ const kinesis = new AWS.Kinesis({region: 'us-east-1'})
 const wrapper = require('sierra-wrapper')
 const config = require('config')
 const retry = require('retry')
+var streams = require('./lib/stream')
 
 //main function
 exports.handler = function(event, context, callback) {
@@ -30,7 +31,7 @@ var kinesisHandler = function(records, context, callback) {
   // Make sure wrapper_access_token is set:
   set_wrapper_access_token()
     // Make sure schema is fetched:
-    .then(getSchema)
+    .then(getSchemaOfReadingStream)
     // Now we're oauthed and have a parsed schema, so process the records:
     .then((schema) => processResources(records, schema))
     // Now tell the lambda enviroment whether there was an error or not:
@@ -53,7 +54,7 @@ var kinesisHandler = function(records, context, callback) {
 
 var __schemaObject = null;
 
-var getSchema = function () {
+var getSchemaOfReadingStream = function () {
   // If we've already fetched it, return immediately:
   if (__schemaObject) return Promise.resolve(__schemaObject)
 
@@ -94,7 +95,7 @@ var processResources = function(records, schema_data){
         return resource_in_detail(json_data.id, true)
           .then(function(bib) {
             var stream = config.get('bib.stream');
-            return postResourcesToStream(bib, stream)
+            return streams.postResourcesToStream(bib, stream)
               .then(() => ({ error: null, bib: bib }))
           })
           .catch((e) => {
@@ -105,7 +106,7 @@ var processResources = function(records, schema_data){
         return resource_in_detail(json_data.id, false)
           .then(function(item){
             var stream = config.get('item.stream');
-            return postResourcesToStream(item, stream)
+            return streams.postResourcesToStream(item, stream)
               .then(() => ({ error: null, item }))
           })
           .catch((e) => {
@@ -230,26 +231,5 @@ var set_wrapper_access_token = function(){
       resolve (wrapper.authorizedToken);
     });
   });
-}
-
-//send data to kinesis Stream
-var postResourcesToStream = function(resource, stream){
-  return new Promise((resolve, reject) => {
-    const type = avro.infer(resource);
-    const resource_in_avro_format = type.toBuffer(resource);
-    var params = {
-      Data: resource_in_avro_format, // required 
-      PartitionKey: crypto.randomBytes(20).toString('hex').toString(), // required
-      StreamName: stream, // required 
-    }
-    kinesis.putRecord(params, function (err, data) {
-      // if (err) console.log(err, err.stack) // an error occurred
-      // else     console.log(data)           // successful response
-      console.log('wrote to kinesis: ', data)
-      if (err) reject(err)
-      else resolve(data)
-      //cb(null,data)
-    })
-  })
 }
   
