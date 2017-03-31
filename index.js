@@ -33,10 +33,13 @@ var kinesisHandler = function(records, context, callback) {
   set_wrapper_access_token()
     // Make sure schema is fetched:
     .then(() => {
-      getSchemas()
-      .then((schemas) => {
-        console.log(schemas)
-      })
+      return getSchemas()
+        .then((schemas) => {
+          console.log(schemas)
+        })
+        .catch((e) => {
+          console.log(e)
+        })
     })
     // Now we're oauthed and have parsed schemas, so process the records:
     /*.then((schemas) => {
@@ -69,8 +72,7 @@ var getSchemas = () => {
   if(Object.keys(CACHE).length !== 0){
     return Promise.resolve(CACHE)
   }
-  return new Promise((resolve, reject) => {
-    // Otherwise, fetch it for first time: 
+  // Otherwise, fetch it for first time: 
     var schema_reading_stream = null
     var schema_posting_stream = null
     if(config.get('isABib')){
@@ -80,20 +82,19 @@ var getSchemas = () => {
       schema_reading_stream = config.get('item.schema_reading_stream')
       schema_posting_stream = config.get('item.schema_posting_stream')
     }
-    return schema_helper.schema(schema_reading_stream)
-      .then((schema_object_reading_stream) => {
-        console.log(CACHE)
-        return Promise.resolve(CACHE['schema_reading_stream'] = schema_object_reading_stream)
+    return Promise.all([
+      schema_helper.schema(schema_reading_stream),
+        
+      schema_helper.schema(schema_posting_stream)
+          
+    ])
+      .then((all_schemas) => {
+        console.log("Sending all schemas")
+        CACHE['schema_reading_stream'] = all_schemas[0]
+        CACHE['schema_posting_stream'] = all_schemas[1]
+        return Promise.resolve(CACHE)
       })
-      .then(() => {
-        console.log(CACHE)
-        return schema_helper.schema(schema_posting_stream)
-      })
-      .then((schema_object_posting_stream) => {
-        console.log(CACHE)
-        return Promise.resolve(CACHE['schema_posting_stream'] = schema_object_posting_stream)
-      })
-  })
+      .catch((e) => reject (e))
 }
 
 var setGlobalAccessTokenAndProcessResources = (function(records, schema_data){
