@@ -2,14 +2,15 @@
     "key": "",
     "secret": "",
     "base": "https://ilsstaff.nypl.org/iii/sierra-api/v3/",
+    "schema_base_url": "https://api.nypltech.org/api/v0.1/current-schemas",
     "bib":{
-        "schema_retrieval_url": "https://api.nypltech.org/api/v0.1/current-schemas/SierraItemRetrievalRequest",
-        "schema_poster_url": "https://api.nypltech.org/api/v0.1/current-schemas/SierraBibPostRequest",
+        "schema_reading_stream": "SierraItemRetrievalRequest",
+        "schema_posting_stream": "SierraBibPostRequest",
         "stream": "testBibPoster"
     },
     "item":{
-        "schema_retrieval_url": "https://api.nypltech.org/api/v0.1/current-schemas/SierraItemRetrievalRequest",
-        "schema_poster_url": "https://api.nypltech.org/api/v0.1/current-schemas/SierraItemPostRequest",
+        "schema_reading_stream": "SierraItemRetrievalRequest",
+        "schema_posting_stream": "SierraItemPostRequest",
         "stream": "testItemPoster"
     }
 }

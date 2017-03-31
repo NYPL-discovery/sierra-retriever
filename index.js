@@ -7,6 +7,7 @@ const kinesis = new AWS.Kinesis({region: 'us-east-1'})
 const wrapper = require('sierra-wrapper')
 const config = require('config')
 const retry = require('retry')
+const schema_helper = require('./lib/schema-helper')
 var streams = require('./lib/stream')
 
 //main function
@@ -31,9 +32,17 @@ var kinesisHandler = function(records, context, callback) {
   // Make sure wrapper_access_token is set:
   set_wrapper_access_token()
     // Make sure schema is fetched:
-    .then(getSchemaOfReadingStream)
-    // Now we're oauthed and have a parsed schema, so process the records:
-    .then((schema) => processResources(records, schema))
+    .then(() => {
+      getSchemas()
+      .then((schemas) => {
+        console.log(schemas)
+      })
+    })
+    // Now we're oauthed and have parsed schemas, so process the records:
+    /*.then((schemas) => {
+      console.log(schemas)
+      processResources(records, schemas)
+    })
     // Now tell the lambda enviroment whether there was an error or not:
     .then((results) => {
       var successes = 0
@@ -45,31 +54,46 @@ var kinesisHandler = function(records, context, callback) {
       var error = null
       if (failures > 0) error = `${failures} failed`
       callback(error, `Wrote ${records.length}; Succeeded: ${successes} Failures: ${failures}`)
-    })
+    })*/
     .catch((error) => {
       console.log('calling callback with error')
       callback(error)
     })
 }
 
-var __schemaObject = null;
+// General purpose global hash of things to remember:
+var CACHE = {}
 
-var getSchemaOfReadingStream = function () {
+var getSchemas = () => {
   // If we've already fetched it, return immediately:
-  if (__schemaObject) return Promise.resolve(__schemaObject)
-
-  // Otherwise, fetch it for first time:
-  var schema_retrieval_url = null;
-  if(config.get('isABib')){
-   schema_retrieval_url = config.get('bib.schema_retrieval_url');
-  }else{
-    schema_retrieval_url = config.get('item.schema_retrieval_url');
+  if(CACHE['schema_reading_stream'] && CACHE['schema_posting_stream']){
+    return Promise.resolve(CACHE)
   }
-  return schema(schema_retrieval_url)
-    .then((schemaObj) => {
-      __schemaObject = schemaObj
-      return __schemaObject
-    })
+  return new Promise((resolve, reject) => {
+    // Otherwise, fetch it for first time: 
+    var schema_reading_stream = null
+    var schema_posting_stream = null
+    if(config.get('isABib')){
+    schema_reading_stream = config.get('bib.schema_reading_stream')
+    schema_posting_stream = config.get('bib.schema_posting_stream')
+    }else{
+      schema_reading_stream = config.get('item.schema_reading_stream')
+      schema_posting_stream = config.get('item.schema_posting_stream')
+    }
+    return schema_helper.schema(schema_reading_stream)
+      .then((schema_object_reading_stream) => {
+        console.log(CACHE)
+        return Promise.resolve(CACHE['schema_reading_stream'] = schema_object_reading_stream)
+      })
+      .then(() => {
+        console.log(CACHE)
+        return schema_helper.schema(schema_posting_stream)
+      })
+      .then((schema_object_posting_stream) => {
+        console.log(CACHE)
+        return Promise.resolve(CACHE['schema_posting_stream'] = schema_object_posting_stream)
+      })
+  })
 }
 
 var setGlobalAccessTokenAndProcessResources = (function(records, schema_data){
@@ -116,22 +140,6 @@ var processResources = function(records, schema_data){
       }
     })
   );
-}
-
-//get schema
-var request = require('request');
-var schema = function(url) {
-  return new Promise(function(resolve, reject) {
-      console.log('Querying for schema - ' + url);
-      request(url, function(error, response, body) {
-        if(!error && response.statusCode == 200){
-          resolve(JSON.parse(body).data.schema);
-        } else {
-          console.log("An error occurred - " + response.statusCode);
-          reject("Error occurred while getting schema - " + response.statusCode);
-        }
-      })
-    })
 }
 
 //use avro to deserialize
