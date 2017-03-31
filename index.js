@@ -66,7 +66,7 @@ var CACHE = {}
 
 var getSchemas = () => {
   // If we've already fetched it, return immediately:
-  if(CACHE['schema_reading_stream'] && CACHE['schema_posting_stream']){
+  if(Object.keys(CACHE).length !== 0){
     return Promise.resolve(CACHE)
   }
   return new Promise((resolve, reject) => {
