@@ -94,18 +94,6 @@ var getSchemas = () => {
       .catch((e) => reject (e))
 }
 
-var setGlobalAccessTokenAndProcessResources = (function(records, schema_data){
-  // If we already have it, return immediately:
-  if (wrapper_access_token) return Promise.resolve()
-
-  return set_wrapper_access_token()
-        .then(function(access_token){
-          console.log('Access token is - ' + access_token);
-          wrapper_access_token = access_token;
-          processResources(records, schema_data);
-        });
-  });
-
 //process resources
 var processResources = function(records, schemas){
   // records.forEach(function(record){
