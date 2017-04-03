@@ -10,6 +10,10 @@ const retry = require('retry')
 const schema_helper = require('./lib/schema-helper')
 var streams = require('./lib/stream')
 
+
+const SCHEMA_READING_STREAM = 'schema_reading_stream'
+const SCHEMA_POSTING_STREAM = 'schema_posting_stream'
+
 //main function
 exports.handler = function(event, context, callback) {
   var record = event.Records[0];
@@ -31,20 +35,13 @@ var kinesisHandler = function(records, context, callback) {
 
   // Make sure wrapper_access_token is set:
   set_wrapper_access_token()
-    // Make sure schema is fetched:
+    // Make sure all the schemas are fetched:
     .then(() => {
       return getSchemas()
-        .then((schemas) => {
-          console.log(schemas)
-        })
-        .catch((e) => {
-          console.log(e)
-        })
     })
     // Now we're oauthed and have parsed schemas, so process the records:
-    /*.then((schemas) => {
-      console.log(schemas)
-      processResources(records, schemas)
+    .then((schemas) => {
+      return processResources(records, schemas)
     })
     // Now tell the lambda enviroment whether there was an error or not:
     .then((results) => {
@@ -57,7 +54,7 @@ var kinesisHandler = function(records, context, callback) {
       var error = null
       if (failures > 0) error = `${failures} failed`
       callback(error, `Wrote ${records.length}; Succeeded: ${successes} Failures: ${failures}`)
-    })*/
+    })
     .catch((error) => {
       console.log('calling callback with error')
       callback(error)
@@ -90,8 +87,8 @@ var getSchemas = () => {
     ])
       .then((all_schemas) => {
         console.log("Sending all schemas")
-        CACHE['schema_reading_stream'] = all_schemas[0]
-        CACHE['schema_posting_stream'] = all_schemas[1]
+        CACHE[SCHEMA_READING_STREAM] = all_schemas[0]
+        CACHE[SCHEMA_POSTING_STREAM] = all_schemas[1]
         return Promise.resolve(CACHE)
       })
       .catch((e) => reject (e))
@@ -110,17 +107,17 @@ var setGlobalAccessTokenAndProcessResources = (function(records, schema_data){
   });
 
 //process resources
-var processResources = function(records, schema_data){
+var processResources = function(records, schemas){
   // records.forEach(function(record){
   return Promise.all(
     records.map((record) => {
       var data = record.kinesis.data;
-      var json_data = avro_decoded_data(schema_data, data);
+      var json_data = avro_decoded_data(schemas[SCHEMA_READING_STREAM], data);
       if(config.get('isABib')){
         return resource_in_detail(json_data.id, true)
           .then(function(bib) {
             var stream = config.get('bib.stream');
-            return streams.postResourcesToStream(bib, stream)
+            return streams.postResourcesToStream(bib, stream, schemas[SCHEMA_POSTING_STREAM])
               .then(() => ({ error: null, bib: bib }))
           })
           .catch((e) => {
@@ -131,7 +128,7 @@ var processResources = function(records, schema_data){
         return resource_in_detail(json_data.id, false)
           .then(function(item){
             var stream = config.get('item.stream');
-            return streams.postResourcesToStream(item, stream)
+            return streams.postResourcesToStream(item, stream, schemas[SCHEMA_POSTING_STREAM])
               .then(() => ({ error: null, item }))
           })
           .catch((e) => {
@@ -217,9 +214,8 @@ var getResult = function(errorResourceReq, results, isBib, resourceId, operation
         }
       } else {
             var entries = results.data.entries;
-            var entry = entries[0];
-            console.log(JSON.stringify(entry));
-            resolve(entry);
+            console.log(JSON.stringify(entries[0]));
+            resolve(entries[0]);
           }
   });
 }
