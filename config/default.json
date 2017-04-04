@@ -6,11 +6,11 @@
     "bib":{
         "schema_reading_stream": "SierraBibRetrievalRequest",
         "schema_posting_stream": "SierraBibPostRequest",
-        "stream": "testBibPoster"
+        "stream": "SierraBibPostRequest"
     },
     "item":{
         "schema_reading_stream": "SierraItemRetrievalRequest",
         "schema_posting_stream": "SierraItemPostRequest",
-        "stream": "testItemPoster"
+        "stream": "SierraItemPostRequest"
     }
 }
