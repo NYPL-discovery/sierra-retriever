@@ -112,7 +112,7 @@ var processResources = function (records, schemas) {
               })
           })
           .catch((e) => {
-            console.log('Error with bib: ', e)
+            console.log('Error with bib: ' + json_data.id, e)
             return { error: e, bib: json_data.id }
           })
       } else {
@@ -182,11 +182,12 @@ var resource_in_detail = function (id, isBib) {
   })
 }
 
-// get bib or item based on prama passed
+// get bib or item based on switch isBib passed
 var getResult = function (errorResourceReq, results, isBib, resourceId, operation, attemptNumber) {
   return new Promise(function (resolve, reject) {
     if (errorResourceReq) {
-      if (errorResourceReq.httpStatus !== null && errorResourceReq.httpStatus === 401) {
+      console.log('Received error. Error will be sent back instead of results - ' + errorResourceReq)
+      if (errorResourceReq.httpStatus === 401) {
         console.log('This is a token issue. Going to renew token')
         if (isBib) {
           console.log('Number of attempts made for bib ' + resourceId + ' - ' + attemptNumber)
