@@ -186,8 +186,9 @@ var resourceInDetail = function (id, isBib) {
 var getResult = function (errorResourceReq, results, isBib, resourceId, operation, attemptNumber) {
   return new Promise(function (resolve, reject) {
     if (errorResourceReq) {
-      console.log('Error httpstatus -' + errorResourceReq.httpStatus + '-')
-      if (errorResourceReq.httpStatus === 401) {
+      let errorInJson = JSON.parse(errorResourceReq)
+      console.log('Error httpstatus -' + errorInJson.httpStatus + '-')
+      if (errorInJson.httpStatus === 401) {
         console.log('This is a token issue. Going to renew token')
         if (isBib) {
           console.log('Number of attempts made for bib ' + resourceId + ' - ' + attemptNumber)
@@ -207,7 +208,7 @@ var getResult = function (errorResourceReq, results, isBib, resourceId, operatio
               reject(errorResourceReq)
             })
       } else {
-        console.log('Received error. Error will be sent back instead of results - ' + JSON.stringify(errorResourceReq))
+        console.log('Received error. Error will be sent back instead of results - ' + errorResourceReq)
         reject(errorResourceReq)
       }
     } else {
@@ -221,8 +222,10 @@ var getResult = function (errorResourceReq, results, isBib, resourceId, operatio
 var __accessToken = null
 
 // get wrapper access token
-var getWrapperAccessToken = function () {
-  if (__accessToken) return Promise.resolve(__accessToken)
+var getWrapperAccessToken = () => {
+  if (__accessToken && (Math.floor(Date.now() / 1000) - wrapper.authorizedTimestamp) < 3600) {
+    return Promise.resolve(__accessToken)
+  }
 
   return new Promise(function (resolve, reject) {
     wrapper.auth(function (error, authResults) {
