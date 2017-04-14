@@ -21,7 +21,8 @@
     "highland": "^2.10.2",
     "sierra-wrapper": "^0.1.0",
     "config":"^1.25.1",
-    "retry":"^0.10.1"
+    "retry":"^0.10.1",
+    "request":"^2.81.0"
   },
   "devDependencies": {
     "mocha": "^3.2.0",

@@ -10,6 +10,8 @@ var streams = require('./lib/stream')
 const SCHEMA_READING_STREAM = 'schema_reading_stream'
 const SCHEMA_POSTING_STREAM = 'schema_posting_stream'
 
+const isABib = ((process.env.RETRIEVAL_TYPE === 'bib'))
+
 // main function
 exports.handler = function (event, context, callback) {
   var record = event.Records[0]
@@ -68,7 +70,7 @@ var getSchemas = () => {
   // Otherwise, fetch it for first time:
   var schema_reading_stream = null
   var schema_posting_stream = null
-  if (config.get('isABib')) {
+  if (isABib) {
     schema_reading_stream = config.get('bib.schema_reading_stream')
     schema_posting_stream = config.get('bib.schema_posting_stream')
   } else {
@@ -95,12 +97,11 @@ var getSchemas = () => {
 
 // process resources
 var processResources = function (records, schemas) {
-  // records.forEach(function(record){
   return Promise.all(
     records.map((record) => {
       var data = record.kinesis.data
       var json_data = avro_decoded_data(schemas[SCHEMA_READING_STREAM], data)
-      if (config.get('isABib')) {
+      if (isABib) {
         return resource_in_detail(json_data.id, true)
           .then(function (bib) {
             var stream = config.get('bib.stream')
@@ -136,6 +137,7 @@ var avro_decoded_data = function (schema_data, record) {
   const type = avro.parse(schema_data)
   var decoded = new Buffer(record, 'base64')
   var verify = type.fromBuffer(decoded)
+  console.log(decoded)
   return JSON.parse(verify)
 }
 
@@ -153,6 +155,8 @@ var resource_in_detail = function (id, isBib) {
       if (isBib) {
         console.log('Requesting for bib info')
         wrapper.requestSingleBib(id, (errorBibReq, results) => {
+          console.log('Error from sierra wrapper - ' + errorBibReq)
+          console.log('Results - ' + results)
           getResult(errorBibReq, results, true, id, operation, currentAttempt)
               .then(function (entry) {
                 console.log(JSON.stringify(entry))
@@ -167,6 +171,8 @@ var resource_in_detail = function (id, isBib) {
         console.log('Requesting for item info')
         var itemIds = [id]
         wrapper.requestMultiItemBasic(itemIds, (errorItemReq, results) => {
+          console.log('Error from sierra wrapper - ' + errorItemReq)
+          console.log('Results - ' + results)
           getResult(errorItemReq, results, false, itemIds, operation, currentAttempt)
             .then(function (entry) {
               console.log(JSON.stringify(entry))
