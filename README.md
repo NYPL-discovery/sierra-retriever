@@ -36,7 +36,8 @@ The purpose of this service is to read sierra bib/item ids from the SierraBibReq
     ```
 
 5. In your deploy.env file, give the retrieval type as follows:
-RETRIEVAL_TYPE=bib (change to bib/item based on your need)
+```RETRIEVAL_TYPE=bib (change to bib/item based on your need)
+```
 
 6. To run locally, the following event.json file is also added as part of the repo.
 Now run the following command, node-lambda run -f deploy.env
