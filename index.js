@@ -137,7 +137,6 @@ var avroDecodedData = function (schemaData, record) {
   const type = avro.parse(schemaData)
   var decoded = new Buffer(record, 'base64')
   var verify = type.fromBuffer(decoded)
-  console.log(decoded)
   return JSON.parse(verify)
 }
 
