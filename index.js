@@ -4,13 +4,13 @@ const avro = require('avsc')
 const wrapper = require('sierra-wrapper')
 const config = require('config')
 const retry = require('retry')
-const schema_helper = require('./lib/schema-helper')
+const schemaHelper = require('./lib/schema-helper')
 var streams = require('./lib/stream')
 
-const SCHEMA_READING_STREAM = 'schema_reading_stream'
-const SCHEMA_POSTING_STREAM = 'schema_posting_stream'
+const SCHEMAREADINGSTREAM = 'schemaReadingStream'
+const SCHEMAPOSTINGSTREAM = 'schemaPostingStream'
 
-const isABib = ((process.env.RETRIEVAL_TYPE === 'bib'))
+const isABib = process.env.RETRIEVAL_TYPE === 'bib'
 
 // main function
 exports.handler = function (event, context, callback) {
@@ -31,8 +31,8 @@ var kinesisHandler = function (records, context, callback) {
   }
   wrapper.loadConfig(conf)
 
-  // Make sure wrapper_access_token is set:
-  get_wrapper_access_token()
+  // Make sure wrapper_accessToken is set:
+  getWrapperAccessToken()
     // Make sure all the schemas are fetched:
     .then(() => {
       return getSchemas()
@@ -68,25 +68,25 @@ var getSchemas = () => {
     return Promise.resolve(CACHE)
   }
   // Otherwise, fetch it for first time:
-  var schema_reading_stream = null
-  var schema_posting_stream = null
+  var schemaReadingStream = null
+  var schemaPostingStream = null
   if (isABib) {
-    schema_reading_stream = config.get('bib.schema_reading_stream')
-    schema_posting_stream = config.get('bib.schema_posting_stream')
+    schemaReadingStream = config.get('bib.schemaReadingStream')
+    schemaPostingStream = config.get('bib.schemaPostingStream')
   } else {
-    schema_reading_stream = config.get('item.schema_reading_stream')
-    schema_posting_stream = config.get('item.schema_posting_stream')
+    schemaReadingStream = config.get('item.schemaReadingStream')
+    schemaPostingStream = config.get('item.schemaPostingStream')
   }
   return Promise.all([
-    schema_helper.schema(schema_reading_stream),
+    schemaHelper.schema(schemaReadingStream),
 
-    schema_helper.schema(schema_posting_stream)
+    schemaHelper.schema(schemaPostingStream)
 
   ])
-      .then((all_schemas) => {
+      .then((allSchemas) => {
         console.log('Sending all schemas')
-        CACHE[SCHEMA_READING_STREAM] = all_schemas[0]
-        CACHE[SCHEMA_POSTING_STREAM] = all_schemas[1]
+        CACHE[SCHEMAREADINGSTREAM] = allSchemas[0]
+        CACHE[SCHEMAPOSTINGSTREAM] = allSchemas[1]
         return Promise.resolve(CACHE)
       })
       .catch((e) => {
@@ -100,12 +100,12 @@ var processResources = function (records, schemas) {
   return Promise.all(
     records.map((record) => {
       var data = record.kinesis.data
-      var json_data = avro_decoded_data(schemas[SCHEMA_READING_STREAM], data)
+      var jsonData = avroDecodedData(schemas[SCHEMAREADINGSTREAM], data)
       if (isABib) {
-        return resource_in_detail(json_data.id, true)
+        return resourceInDetail(jsonData.id, true)
           .then(function (bib) {
             var stream = config.get('bib.stream')
-            return streams.postResourcesToStream(bib, stream, schemas[SCHEMA_POSTING_STREAM])
+            return streams.postResourcesToStream(bib, stream, schemas[SCHEMAPOSTINGSTREAM])
               .then(() => ({ error: null, bib: bib }))
               .catch((e) => {
                 console.log('Error occurred posting to kinesis - ' + e)
@@ -113,19 +113,19 @@ var processResources = function (records, schemas) {
               })
           })
           .catch((e) => {
-            console.log('Error with bib: ', e)
-            return { error: e, bib: json_data.id }
+            console.log('Error with bib: ' + jsonData.id, e)
+            return { error: e, bib: jsonData.id }
           })
       } else {
-        return resource_in_detail(json_data.id, false)
+        return resourceInDetail(jsonData.id, false)
           .then(function (item) {
             var stream = config.get('item.stream')
-            return streams.postResourcesToStream(item, stream, schemas[SCHEMA_POSTING_STREAM])
+            return streams.postResourcesToStream(item, stream, schemas[SCHEMAPOSTINGSTREAM])
               .then(() => ({ error: null, item }))
           })
           .catch((e) => {
             console.log('Error with item: ', e)
-            return { error: e, item: json_data.id }
+            return { error: e, item: jsonData.id }
           })
       }
     })
@@ -133,8 +133,8 @@ var processResources = function (records, schemas) {
 }
 
 // use avro to deserialize
-var avro_decoded_data = function (schema_data, record) {
-  const type = avro.parse(schema_data)
+var avroDecodedData = function (schemaData, record) {
+  const type = avro.parse(schemaData)
   var decoded = new Buffer(record, 'base64')
   var verify = type.fromBuffer(decoded)
   console.log(decoded)
@@ -142,7 +142,7 @@ var avro_decoded_data = function (schema_data, record) {
 }
 
 // get full bib/item details for each bib/item id
-var resource_in_detail = function (id, isBib) {
+var resourceInDetail = function (id, isBib) {
   return new Promise(function (resolve, reject) {
     var operation = retry.operation({
       retries: 5,
@@ -188,19 +188,21 @@ var resource_in_detail = function (id, isBib) {
   })
 }
 
-// get bib or item based on prama passed
+// get bib or item based on switch isBib passed
 var getResult = function (errorResourceReq, results, isBib, resourceId, operation, attemptNumber) {
   return new Promise(function (resolve, reject) {
     if (errorResourceReq) {
-      if (errorResourceReq.httpStatus !== null && errorResourceReq.httpStatus === 401) {
+      var errorInJson = JSON.parse(errorResourceReq)
+      console.log('Error httpstatus -' + errorInJson.httpStatus + '-')
+      if (errorInJson.httpStatus === 401) {
         console.log('This is a token issue. Going to renew token')
         if (isBib) {
           console.log('Number of attempts made for bib ' + resourceId + ' - ' + attemptNumber)
         } else {
           console.log('Number of attempts made for item ' + resourceId + ' - ' + attemptNumber)
         }
-        get_wrapper_access_token()
-            .then(function (access_token) {
+        getWrapperAccessToken()
+            .then(function (accessToken) {
               if (operation.retry(errorResourceReq)) {
                 return
               }
@@ -211,6 +213,9 @@ var getResult = function (errorResourceReq, results, isBib, resourceId, operatio
               }
               reject(errorResourceReq)
             })
+      } else {
+        console.log('Received error. Error will be sent back instead of results - ' + errorResourceReq)
+        reject(errorResourceReq)
       }
     } else {
       var entries = results.data.entries
@@ -220,11 +225,13 @@ var getResult = function (errorResourceReq, results, isBib, resourceId, operatio
   })
 }
 
-var __access_token = null
+var __accessToken = null
 
 // get wrapper access token
-var get_wrapper_access_token = function () {
-  if (__access_token) return Promise.resolve(__access_token)
+var getWrapperAccessToken = () => {
+  if (__accessToken && (Math.floor(Date.now() / 1000) - wrapper.authorizedTimestamp) < 3600) {
+    return Promise.resolve(__accessToken)
+  }
 
   return new Promise(function (resolve, reject) {
     wrapper.auth(function (error, authResults) {
@@ -233,7 +240,7 @@ var get_wrapper_access_token = function () {
         console.log(error, error.stack)
         reject(error)
       }
-      __access_token = wrapper.authorizedToken
+      __accessToken = wrapper.authorizedToken
       resolve(wrapper.authorizedToken)
     })
   })
