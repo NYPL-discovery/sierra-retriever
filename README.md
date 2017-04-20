@@ -9,11 +9,11 @@ The purpose of this service is to read sierra bib/item ids from the SierraBibReq
     ```
     {
         "key": "your_sierra_api_key",
-        "secret": "your_sierra_secret",
-        "isABib": true or false
+        "secret": "your_sierra_secret"
     }
     ```
-    local.json file should not be checked in and should be part of gitignore.
+    local.json file should not be checked in and should be part of gitignore.
+    
 4. In your .env file provide values as needed, here is a sample - 
     ```
     AWS_ENVIRONMENT=development
@@ -35,8 +35,11 @@ The purpose of this service is to read sierra bib/item ids from the SierraBibReq
     PACKAGE_DIRECTORY=build 
     ```
 
-5. To run locally, the following event.json file is also added as part of the repo.
-Now run the following command, node-lambda run
+5. In your deploy.env file, give the retrieval type as follows:
+RETRIEVAL_TYPE=bib (change to bib/item based on your need)
+
+6. To run locally, the following event.json file is also added as part of the repo.
+Now run the following command, node-lambda run -f deploy.env
 
 # Deployment
 If the .env file is filled with the right values, then 
