@@ -53,11 +53,17 @@ var kinesisHandler = function (records, context, callback) {
         else successes += 1
       })
       var error = null
-      if (failures > 0) error = `${failures} failed`
+      if (failures > 0) {
+        error = `${failures} failed`
+        var errorDetail = {'source': 'APP_ERROR', 'details': error}
+        log.error(errorDetail)
+      }
       callback(error, `Wrote ${records.length}; Succeeded: ${successes} Failures: ${failures}`)
     })
     .catch((error) => {
-      log.error('calling callback with error')
+      var errorDetail = {'source': 'APP_ERROR', 'details': error}
+      log.error(errorDetail)
+      log.error('calling callback() with error')
       callback(error)
     })
 }
