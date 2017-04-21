@@ -166,7 +166,7 @@ var resourceInDetail = function (id, isBib) {
           if (errorBibReq) { log.error('API_ERROR: Error occurred while calling sierra api for bib') }
           getResult(errorBibReq, results, true, id, operation, currentAttempt)
               .then(function (entry) {
-                log.info(JSON.stringify(entry))
+                log.info(entry)
                 resolve(entry)
               })
               .catch(function (e) {
@@ -181,7 +181,7 @@ var resourceInDetail = function (id, isBib) {
           if (errorItemReq) { log.error('API_ERROR: Error occurred while calling sierra api for item') }
           getResult(errorItemReq, results, false, itemIds, operation, currentAttempt)
             .then(function (entry) {
-              log.info(JSON.stringify(entry))
+              log.info(entry)
               resolve(entry)
             })
             .catch(function (e) {
@@ -225,7 +225,7 @@ var getResult = function (errorResourceReq, results, isBib, resourceId, operatio
       }
     } else {
       var entries = results.data.entries
-      log.info(JSON.stringify(entries[0]))
+      log.info(entries[0])
       resolve(entries[0])
     }
   })
