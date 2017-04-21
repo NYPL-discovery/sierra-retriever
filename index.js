@@ -56,13 +56,13 @@ var kinesisHandler = function (records, context, callback) {
       if (failures > 0) {
         error = `${failures} failed`
         var errorDetail = {'source': 'APP_ERROR', 'details': error}
-        log.error(errorDetail)
+        log.error({APP_ERROR: errorDetail})
       }
       callback(error, `Wrote ${records.length}; Succeeded: ${successes} Failures: ${failures}`)
     })
     .catch((error) => {
       var errorDetail = {'source': 'APP_ERROR', 'details': error}
-      log.error(errorDetail)
+      log.error({APP_ERROR: errorDetail})
       log.error('calling callback() with error')
       callback(error)
     })
@@ -163,7 +163,10 @@ var resourceInDetail = function (id, isBib) {
       if (isBib) {
         log.info('Requesting for bib info')
         wrapper.requestSingleBib(id, (errorBibReq, results) => {
-          if (errorBibReq) { log.error('API_ERROR: Error occurred while calling sierra api for bib') }
+          if (errorBibReq) {
+            var errorDetail = {message: 'Error occurred while calling sierra api for bib', detail: errorBibReq}
+            log.error({API_ERROR: errorDetail})
+          }
           getResult(errorBibReq, results, true, id, operation, currentAttempt)
               .then(function (entry) {
                 log.info({entry: entry})
@@ -178,7 +181,10 @@ var resourceInDetail = function (id, isBib) {
         log.info('Requesting for item info')
         var itemIds = [id]
         wrapper.requestMultiItemBasic(itemIds, (errorItemReq, results) => {
-          if (errorItemReq) { log.error('API_ERROR: Error occurred while calling sierra api for item') }
+          if (errorItemReq) {
+            var errorDetail = {message: 'Error occurred while calling sierra api for item', detail: errorItemReq}
+            log.error({API_ERROR: errorDetail})
+          }
           getResult(errorItemReq, results, false, itemIds, operation, currentAttempt)
             .then(function (entry) {
               log.info({entry: entry})
