@@ -1,9 +1,9 @@
-console.log('Loading sierra resource retriever service')
 
 const avro = require('avsc')
 const wrapper = require('sierra-wrapper')
 const config = require('config')
 const retry = require('retry')
+const bunyan = require('bunyan')
 const schemaHelper = require('./lib/schema-helper')
 var streams = require('./lib/stream')
 
@@ -11,6 +11,9 @@ const SCHEMAREADINGSTREAM = 'schemaReadingStream'
 const SCHEMAPOSTINGSTREAM = 'schemaPostingStream'
 
 const isABib = process.env.RETRIEVAL_TYPE === 'bib'
+var log = isABib ? bunyan.createLogger({name: 'sierra-bib-retriever'}) : bunyan.createLogger({name: 'sierra-item-retriever'})
+
+log.info('Loading sierra resource retriever service')
 
 // main function
 exports.handler = function (event, context, callback) {
@@ -22,7 +25,7 @@ exports.handler = function (event, context, callback) {
 
 // kinesis stream handler
 var kinesisHandler = function (records, context, callback) {
-  console.log('Processing ' + records.length + ' records')
+  log.info('Processing ' + records.length + ' records')
 
   var conf = {
     key: config.get('key'),
@@ -54,7 +57,7 @@ var kinesisHandler = function (records, context, callback) {
       callback(error, `Wrote ${records.length}; Succeeded: ${successes} Failures: ${failures}`)
     })
     .catch((error) => {
-      console.log('calling callback with error')
+      log.error('calling callback with error')
       callback(error)
     })
 }
@@ -84,7 +87,7 @@ var getSchemas = () => {
 
   ])
       .then((allSchemas) => {
-        console.log('Sending all schemas')
+        log.debug('Sending all schemas')
         CACHE[SCHEMAREADINGSTREAM] = allSchemas[0]
         CACHE[SCHEMAPOSTINGSTREAM] = allSchemas[1]
         return Promise.resolve(CACHE)
@@ -108,12 +111,12 @@ var processResources = function (records, schemas) {
             return streams.postResourcesToStream(bib, stream, schemas[SCHEMAPOSTINGSTREAM])
               .then(() => ({ error: null, bib: bib }))
               .catch((e) => {
-                console.log('Error occurred posting to kinesis - ' + e)
+                log.error('Error occurred posting to kinesis - ' + e)
                 return ({ error: e, bib: bib })
               })
           })
           .catch((e) => {
-            console.log('Error with bib: ' + jsonData.id, e)
+            log.error('Error with bib: ' + jsonData.id, e)
             return { error: e, bib: jsonData.id }
           })
       } else {
@@ -124,7 +127,7 @@ var processResources = function (records, schemas) {
               .then(() => ({ error: null, item }))
           })
           .catch((e) => {
-            console.log('Error with item: ', e)
+            log.error('Error with item: ', e)
             return { error: e, item: jsonData.id }
           })
       }
@@ -152,33 +155,31 @@ var resourceInDetail = function (id, isBib) {
     })
     operation.attempt(function (currentAttempt) {
       if (isBib) {
-        console.log('Requesting for bib info')
+        log.info('Requesting for bib info')
         wrapper.requestSingleBib(id, (errorBibReq, results) => {
-          console.log('Error from sierra wrapper - ' + errorBibReq)
-          console.log('Results - ' + results)
+          if (errorBibReq) { log.error('API_ERROR: Error occurred while calling sierra api for bib') }
           getResult(errorBibReq, results, true, id, operation, currentAttempt)
               .then(function (entry) {
-                console.log(JSON.stringify(entry))
+                log.info(JSON.stringify(entry))
                 resolve(entry)
               })
               .catch(function (e) {
-                console.log('Error occurred while getting bib - ' + e)
+                log.error('Error occurred while getting bib - ' + e)
                 reject(e)
               })
         })
       } else {
-        console.log('Requesting for item info')
+        log.info('Requesting for item info')
         var itemIds = [id]
         wrapper.requestMultiItemBasic(itemIds, (errorItemReq, results) => {
-          console.log('Error from sierra wrapper - ' + errorItemReq)
-          console.log('Results - ' + results)
+          if (errorItemReq) { log.error('API_ERROR: Error occurred while calling sierra api for item') }
           getResult(errorItemReq, results, false, itemIds, operation, currentAttempt)
             .then(function (entry) {
-              console.log(JSON.stringify(entry))
+              log.info(JSON.stringify(entry))
               resolve(entry)
             })
             .catch(function (e) {
-              console.log('Error occurred while getting item - ' + e)
+              log.error('Error occurred while getting item - ' + e)
               reject(e)
             })
         })
@@ -192,13 +193,13 @@ var getResult = function (errorResourceReq, results, isBib, resourceId, operatio
   return new Promise(function (resolve, reject) {
     if (errorResourceReq) {
       var errorInJson = JSON.parse(errorResourceReq)
-      console.log('Error httpstatus -' + errorInJson.httpStatus + '-')
+      log.error('Error httpstatus -' + errorInJson.httpStatus + '-')
       if (errorInJson.httpStatus === 401) {
-        console.log('This is a token issue. Going to renew token')
+        log.error('This is a token issue. Going to renew token')
         if (isBib) {
-          console.log('Number of attempts made for bib ' + resourceId + ' - ' + attemptNumber)
+          log.info('Number of attempts made for bib ' + resourceId + ' - ' + attemptNumber)
         } else {
-          console.log('Number of attempts made for item ' + resourceId + ' - ' + attemptNumber)
+          log.info('Number of attempts made for item ' + resourceId + ' - ' + attemptNumber)
         }
         getWrapperAccessToken()
             .then(function (accessToken) {
@@ -206,19 +207,19 @@ var getResult = function (errorResourceReq, results, isBib, resourceId, operatio
                 return
               }
               if (isBib) {
-                console.log('Error occurred while getting bib info')
+                log.error('Error occurred while getting bib info')
               } else {
-                console.log('Error occurred while getting item info')
+                log.error('Error occurred while getting item info')
               }
               reject(errorResourceReq)
             })
       } else {
-        console.log('Received error. Error will be sent back instead of results - ' + errorResourceReq)
+        log.error('Received error. Error will be sent back instead of results - ' + errorResourceReq)
         reject(errorResourceReq)
       }
     } else {
       var entries = results.data.entries
-      console.log(JSON.stringify(entries[0]))
+      log.info(JSON.stringify(entries[0]))
       resolve(entries[0])
     }
   })
@@ -235,8 +236,8 @@ var getWrapperAccessToken = () => {
   return new Promise(function (resolve, reject) {
     wrapper.auth(function (error, authResults) {
       if (error) {
-        console.log('Error occurred while getting access token')
-        console.log(error, error.stack)
+        log.error('Error occurred while getting access token')
+        log.error(error, error.stack)
         reject(error)
       }
       __accessToken = wrapper.authorizedToken
