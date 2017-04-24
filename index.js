@@ -164,7 +164,7 @@ var resourceInDetail = function (id, isBib) {
         log.info('Requesting for bib info')
         wrapper.requestSingleBib(id, (errorBibReq, results) => {
           if (errorBibReq) {
-            var errorDetail = {message: 'Error occurred while calling sierra api for bib', detail: errorBibReq}
+            var errorDetail = {message: 'Error occurred while calling sierra api for bib', detail: JSON.parse(errorBibReq)}
             log.error({API_ERROR: errorDetail})
           }
           getResult(errorBibReq, results, true, id, operation, currentAttempt)
@@ -182,7 +182,7 @@ var resourceInDetail = function (id, isBib) {
         var itemIds = [id]
         wrapper.requestMultiItemBasic(itemIds, (errorItemReq, results) => {
           if (errorItemReq) {
-            var errorDetail = {message: 'Error occurred while calling sierra api for item', detail: errorItemReq}
+            var errorDetail = {message: 'Error occurred while calling sierra api for item', detail: JSON.parse(errorItemReq)}
             log.error({API_ERROR: errorDetail})
           }
           getResult(errorItemReq, results, false, itemIds, operation, currentAttempt)
