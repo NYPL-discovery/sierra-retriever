@@ -9,6 +9,7 @@ var streams = require('./lib/stream')
 
 const SCHEMAREADINGSTREAM = 'schemaReadingStream'
 const SCHEMAPOSTINGSTREAM = 'schemaPostingStream'
+const NYPLSOURCE = 'sierra-nypl'
 
 const isABib = process.env.RETRIEVAL_TYPE === 'bib'
 var log = isABib ? bunyan.createLogger({name: 'sierra-bib-retriever'}) : bunyan.createLogger({name: 'sierra-item-retriever'})
@@ -113,6 +114,8 @@ var processResources = function (records, schemas) {
       if (isABib) {
         return resourceInDetail(jsonData.id, true)
           .then(function (bib) {
+            bib['nyplSource'] = NYPLSOURCE
+            bib['nyplType'] = 'bib'
             var stream = config.get('bib.stream')
             return streams.postResourcesToStream(bib, stream, schemas[SCHEMAPOSTINGSTREAM])
               .then(() => ({ error: null, bib: bib }))
@@ -128,6 +131,8 @@ var processResources = function (records, schemas) {
       } else {
         return resourceInDetail(jsonData.id, false)
           .then(function (item) {
+            item['nyplSource'] = NYPLSOURCE
+            item['nyplType'] = 'item'
             var stream = config.get('item.stream')
             return streams.postResourcesToStream(item, stream, schemas[SCHEMAPOSTINGSTREAM])
               .then(() => ({ error: null, item }))
