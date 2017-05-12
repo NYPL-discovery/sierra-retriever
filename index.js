@@ -113,16 +113,23 @@ var processResources = function (records, schemas) {
       var jsonData = avroDecodedData(schemas[SCHEMAREADINGSTREAM], data)
       if (isABib) {
         return resourceInDetail(jsonData.id, true)
-          .then(function (bib) {
-            bib['nyplSource'] = NYPLSOURCE
-            bib['nyplType'] = 'bib'
-            var stream = config.get('bib.stream')
-            return streams.postResourcesToStream(bib, stream, schemas[SCHEMAPOSTINGSTREAM])
-              .then(() => ({ error: null, bib: bib }))
-              .catch((e) => {
-                log.error('Error occurred posting to kinesis - ' + e)
-                return ({ error: e, bib: bib })
+          .then((sierraResource) => {
+            if(sierraResource != null) {
+              var bib = sierraResource
+              bib['nyplSource'] = NYPLSOURCE
+              bib['nyplType'] = 'bib'
+              var stream = config.get('bib.stream')
+              return streams.postResourcesToStream(bib, stream, schemas[SCHEMAPOSTINGSTREAM])
+                .then(() => ({ error: null, bib: bib }))
+                .catch((e) => {
+                  log.error('Error occurred posting to kinesis - ' + e)
+                  return ({ error: e, bib: bib })
+                })
+            } else{
+              return Promise.resolve(() => {
+                log.error('No valid bib obtained')
               })
+            }
           })
           .catch((e) => {
             log.error('Error with bib: ' + jsonData.id, e)
@@ -130,12 +137,23 @@ var processResources = function (records, schemas) {
           })
       } else {
         return resourceInDetail(jsonData.id, false)
-          .then(function (item) {
-            item['nyplSource'] = NYPLSOURCE
-            item['nyplType'] = 'item'
-            var stream = config.get('item.stream')
-            return streams.postResourcesToStream(item, stream, schemas[SCHEMAPOSTINGSTREAM])
-              .then(() => ({ error: null, item }))
+          .then( (sierraResource) => {
+            if(sierraResource != null) {
+              var item = sierraResource
+              item['nyplSource'] = NYPLSOURCE
+              item['nyplType'] = 'item'
+              var stream = config.get('item.stream')
+              return streams.postResourcesToStream(item, stream, schemas[SCHEMAPOSTINGSTREAM])
+                .then(() => ({ error: null, item }))
+                .catch((e) => {
+                  log.error('Error occurred posting to kinesis - ' + e)
+                  return ({ error: e, item: item })
+                })
+            } else {
+              return Promise.resolve(() => {
+                log.error('No valid item obtained')
+              })
+            }
           })
           .catch((e) => {
             log.error('Error with item: ', e)
@@ -173,9 +191,14 @@ var resourceInDetail = function (id, isBib) {
             log.error({API_ERROR: errorDetail})
           }
           getResult(errorBibReq, results, true, id, operation, currentAttempt)
-              .then(function (entry) {
-                log.info({entry: entry})
-                resolve(entry)
+              .then((sierraResource) => {
+                if(sierraResource != null) {
+                  log.info({entry: sierraResource.resource})
+                  resolve(sierraResource.resource)
+                } else {
+                  log.error('No resource returned from results')
+                  resolve(null)
+                }
               })
               .catch(function (e) {
                 log.error('Error occurred while getting bib - ' + e)
@@ -192,8 +215,13 @@ var resourceInDetail = function (id, isBib) {
           }
           getResult(errorItemReq, results, false, itemIds, operation, currentAttempt)
             .then(function (entry) {
-              log.info({entry: entry})
-              resolve(entry)
+              if(sierraResource != null){
+                log.info({entry: sierraResource.resource})
+                resolve(sierraResource.resource)
+              } else {
+                log.error('No resource returned from results')
+                resolve(null)
+              }
             })
             .catch(function (e) {
               log.error('Error occurred while getting item - ' + e)
@@ -208,6 +236,7 @@ var resourceInDetail = function (id, isBib) {
 // get bib or item based on switch isBib passed
 var getResult = function (errorResourceReq, results, isBib, resourceId, operation, attemptNumber) {
   return new Promise(function (resolve, reject) {
+    var sierraResource = null
     if (errorResourceReq) {
       var errorInJson = JSON.parse(errorResourceReq)
       log.error('Error httpstatus -' + errorInJson.httpStatus + '-')
@@ -230,14 +259,18 @@ var getResult = function (errorResourceReq, results, isBib, resourceId, operatio
               }
               reject(errorResourceReq)
             })
-      } else {
+      } else if(errorInJson.httpStatus === 400) {
+          log.error('Bad request sent to retrieve resource - ' + errorResourceReq)
+          resolve(sierraResource)
+        } else {
         log.error('Received error. Error will be sent back instead of results - ' + errorResourceReq)
         reject(errorResourceReq)
       }
     } else {
       var entries = results.data.entries
-      log.info({entry: entries[0]})
-      resolve(entries[0])
+      sierraResource = {'resource' : entries[0]}
+      log.info({entry: sierraResource.resource})
+      resolve(sierraResource)
     }
   })
 }

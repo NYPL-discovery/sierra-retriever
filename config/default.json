@@ -5,12 +5,12 @@
     "schemaBaseUrl": "https://api.nypltech.org/api/v0.1/current-schemas",
     "bib":{
         "schemaReadingStream": "SierraBibRetrievalRequest",
-        "schemaPostingStream": "SierraBibPostRequest",
-        "stream": "SierraBibPostRequest"
+        "schemaPostingStream": "BibPostRequest",
+        "stream": "BibPostRequest"
     },
     "item":{
         "schemaReadingStream": "SierraItemRetrievalRequest",
-        "schemaPostingStream": "SierraItemPostRequest",
-        "stream": "SierraItemPostRequest"
+        "schemaPostingStream": "ItemPostRequest",
+        "stream": "ItemPostRequest"
     }
 }
