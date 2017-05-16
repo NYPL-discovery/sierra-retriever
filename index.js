@@ -184,7 +184,7 @@ var resourceInDetail = function (id, isBib) {
     })
     operation.attempt(function (currentAttempt) {
       if (isBib) {
-        log.info('Requesting for bib info')
+        log.info(`Requesting for bib ${id}`)
         wrapper.requestSingleBib(id, (errorBibReq, results) => {
           if (errorBibReq) {
             var errorDetail = {message: 'Error occurred while calling sierra api for bib', detail: JSON.parse(errorBibReq)}
@@ -214,7 +214,7 @@ var resourceInDetail = function (id, isBib) {
             log.error({API_ERROR: errorDetail})
           }
           getResult(errorItemReq, results, false, itemIds, operation, currentAttempt)
-            .then(function (entry) {
+            .then((sierraResource) => {
               if(sierraResource != null){
                 log.info({entry: sierraResource.resource})
                 resolve(sierraResource.resource)
@@ -262,13 +262,16 @@ var getResult = function (errorResourceReq, results, isBib, resourceId, operatio
       } else if(errorInJson.httpStatus === 400) {
           log.error('Bad request sent to retrieve resource - ' + errorResourceReq)
           resolve(sierraResource)
+        } else if(errorInJson.httpStatus === 404) {
+          log.error('Resource not found - ' + errorResourceReq)
+          resolve(sierraResource)
         } else {
         log.error('Received error. Error will be sent back instead of results - ' + errorResourceReq)
         reject(errorResourceReq)
       }
     } else {
-      var entries = results.data.entries
-      sierraResource = {'resource' : entries[0]}
+      var entry = results.data.entries[0]
+      sierraResource = {'resource' : entry}
       log.info({entry: sierraResource.resource})
       resolve(sierraResource)
     }

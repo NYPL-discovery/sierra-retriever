@@ -21,7 +21,7 @@
     "config": "^1.25.1",
     "highland": "^2.10.2",
     "retry": "^0.10.1",
-    "sierra-wrapper": "^0.1.0",
+    "sierra-wrapper": "^0.1.4",
     "request":"^2.81.0",
     "standard": "^10.0.0",
     "bunyan": "^1.8.10"
