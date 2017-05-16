@@ -1,6 +1,6 @@
 
 const avro = require('avsc')
-const wrapper = require('sierra-wrapper')
+const wrapper = require('@nypl/sierra-wrapper')
 const config = require('config')
 const retry = require('retry')
 const bunyan = require('bunyan')
