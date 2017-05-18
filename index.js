@@ -56,13 +56,13 @@ var kinesisHandler = function (records, context, callback) {
       var error = null
       if (failures > 0) {
         error = `${failures} failed`
-        var errorDetail = {'source': 'APP_ERROR', 'details': error}
+        var errorDetail = {'details': error}
         log.error({APP_ERROR: errorDetail})
       }
       callback(error, `Wrote ${records.length}; Succeeded: ${successes} Failures: ${failures}`)
     })
     .catch((error) => {
-      var errorDetail = {'source': 'APP_ERROR', 'details': error}
+      var errorDetail = {'message': error, 'details': error}
       log.error({APP_ERROR: errorDetail})
       log.error('calling callback() with error')
       callback(error)
@@ -100,13 +100,14 @@ var getSchemas = () => {
         return Promise.resolve(CACHE)
       })
       .catch((e) => {
+        log.error('Error occurred while getting schemas')
         return Promise.reject(e)
       }
     )
 }
 
 // process resources
-var processResources = function (records, schemas) {
+var processResources = (records, schemas) => {
   return Promise.all(
     records.map((record) => {
       var data = record.kinesis.data
@@ -114,7 +115,7 @@ var processResources = function (records, schemas) {
       if (isABib) {
         return resourceInDetail(jsonData.id, true)
           .then((sierraResource) => {
-            if(sierraResource != null) {
+            if (sierraResource != null) {
               var bib = sierraResource
               bib['nyplSource'] = NYPLSOURCE
               bib['nyplType'] = 'bib'
@@ -125,7 +126,7 @@ var processResources = function (records, schemas) {
                   log.error('Error occurred posting to kinesis - ' + e)
                   return ({ error: e, bib: bib })
                 })
-            } else{
+            } else {
               return Promise.resolve(() => {
                 log.error('No valid bib obtained')
               })
@@ -137,8 +138,8 @@ var processResources = function (records, schemas) {
           })
       } else {
         return resourceInDetail(jsonData.id, false)
-          .then( (sierraResource) => {
-            if(sierraResource != null) {
+          .then((sierraResource) => {
+            if (sierraResource != null) {
               var item = sierraResource
               item['nyplSource'] = NYPLSOURCE
               item['nyplType'] = 'item'
@@ -165,7 +166,7 @@ var processResources = function (records, schemas) {
 }
 
 // use avro to deserialize
-var avroDecodedData = function (schemaData, record) {
+var avroDecodedData = (schemaData, record) => {
   const type = avro.parse(schemaData)
   var decoded = new Buffer(record, 'base64')
   var verify = type.fromBuffer(decoded)
@@ -173,8 +174,8 @@ var avroDecodedData = function (schemaData, record) {
 }
 
 // get full bib/item details for each bib/item id
-var resourceInDetail = function (id, isBib) {
-  return new Promise(function (resolve, reject) {
+var resourceInDetail = (id, isBib) => {
+  return new Promise((resolve, reject) => {
     var operation = retry.operation({
       retries: 5,
       factor: 3,
@@ -182,7 +183,7 @@ var resourceInDetail = function (id, isBib) {
       maxTimeout: 60 * 1000,
       randomize: true
     })
-    operation.attempt(function (currentAttempt) {
+    operation.attempt((currentAttempt) => {
       if (isBib) {
         log.info(`Requesting for bib ${id}`)
         wrapper.requestSingleBib(id, (errorBibReq, results) => {
@@ -190,19 +191,12 @@ var resourceInDetail = function (id, isBib) {
             var errorDetail = {message: 'Error occurred while calling sierra api for bib', detail: JSON.parse(errorBibReq)}
             log.error({API_ERROR: errorDetail})
           }
-          getResult(errorBibReq, results, true, id, operation, currentAttempt)
-              .then((sierraResource) => {
-                if(sierraResource != null) {
-                  log.info({entry: sierraResource.resource})
-                  resolve(sierraResource.resource)
-                } else {
-                  log.error('No resource returned from results')
-                  resolve(null)
-                }
-              })
-              .catch(function (e) {
-                log.error('Error occurred while getting bib - ' + e)
-                reject(e)
+          getResource(errorBibReq, results, true, id, operation, currentAttempt)
+            .then((resource) => {
+              resolve(resource)
+            })
+              .catch((error) => {
+                reject(error)
               })
         })
       } else {
@@ -213,9 +207,24 @@ var resourceInDetail = function (id, isBib) {
             var errorDetail = {message: 'Error occurred while calling sierra api for item', detail: JSON.parse(errorItemReq)}
             log.error({API_ERROR: errorDetail})
           }
-          getResult(errorItemReq, results, false, itemIds, operation, currentAttempt)
+          getResource(errorItemReq, results, false, itemIds, operation, currentAttempt)
+            .then((resource) => {
+              resolve(resource)
+            })
+              .catch((error) => {
+                reject(error)
+              })
+        })
+      }
+    })
+  })
+}
+
+var getResource = (errorResourceReq, results, isBib, resourceId, operation, attemptNumber) => {
+  return new Promise((resolve, reject) => {
+    getResult(errorResourceReq, results, isBib, resourceId, operation, attemptNumber)
             .then((sierraResource) => {
-              if(sierraResource != null){
+              if (sierraResource != null) {
                 log.info({entry: sierraResource.resource})
                 resolve(sierraResource.resource)
               } else {
@@ -227,15 +236,12 @@ var resourceInDetail = function (id, isBib) {
               log.error('Error occurred while getting item - ' + e)
               reject(e)
             })
-        })
-      }
-    })
   })
 }
 
 // get bib or item based on switch isBib passed
-var getResult = function (errorResourceReq, results, isBib, resourceId, operation, attemptNumber) {
-  return new Promise(function (resolve, reject) {
+var getResult = (errorResourceReq, results, isBib, resourceId, operation, attemptNumber) => {
+  return new Promise((resolve, reject) => {
     var sierraResource = null
     if (errorResourceReq) {
       var errorInJson = JSON.parse(errorResourceReq)
@@ -248,7 +254,7 @@ var getResult = function (errorResourceReq, results, isBib, resourceId, operatio
           log.info('Number of attempts made for item ' + resourceId + ' - ' + attemptNumber)
         }
         getWrapperAccessToken()
-            .then(function (accessToken) {
+            .then((accessToken) => {
               if (operation.retry(errorResourceReq)) {
                 return
               }
@@ -259,19 +265,19 @@ var getResult = function (errorResourceReq, results, isBib, resourceId, operatio
               }
               reject(errorResourceReq)
             })
-      } else if(errorInJson.httpStatus === 400) {
-          log.error('Bad request sent to retrieve resource - ' + errorResourceReq)
-          resolve(sierraResource)
-        } else if(errorInJson.httpStatus === 404) {
-          log.error('Resource not found - ' + errorResourceReq)
-          resolve(sierraResource)
-        } else {
+      } else if (errorInJson.httpStatus === 400) {
+        log.error({APP_ERROR: errorResourceReq}, 'Bad request sent to retrieve resource')
+        resolve(sierraResource)
+      } else if (errorInJson.httpStatus === 404) {
+        log.error({APP_ERROR: errorResourceReq}, 'Resource not found')
+        resolve(sierraResource)
+      } else {
         log.error('Received error. Error will be sent back instead of results - ' + errorResourceReq)
         reject(errorResourceReq)
       }
     } else {
       var entry = results.data.entries[0]
-      sierraResource = {'resource' : entry}
+      sierraResource = {'resource': entry}
       log.info({entry: sierraResource.resource})
       resolve(sierraResource)
     }
