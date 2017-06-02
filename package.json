@@ -16,9 +16,9 @@
   },
   "homepage": "https://github.com/NYPL-discovery/sierra-retriever",
   "dependencies": {
+    "@nypl/nypl-streams-client": "^0.1.2",
     "@nypl/sierra-wrapper": "0.2.0",
     "avsc": "^4.1.11",
-    "aws-sdk": "^2.14.0",
     "bunyan": "^1.8.10",
     "config": "^1.25.1",
     "highland": "^2.10.2",

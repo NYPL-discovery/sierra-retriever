@@ -8,7 +8,6 @@ const schemaHelper = require('./lib/schema-helper')
 var streams = require('./lib/stream')
 
 const SCHEMAREADINGSTREAM = 'schemaReadingStream'
-const SCHEMAPOSTINGSTREAM = 'schemaPostingStream'
 const NYPLSOURCE = 'sierra-nypl'
 
 const isABib = process.env.RETRIEVAL_TYPE === 'bib'
@@ -41,25 +40,35 @@ var kinesisHandler = function (records, context, callback) {
     .then(() => {
       return getSchemas()
     })
-    // Now we're oauthed and have parsed schemas, so process the records:
+    // Now we're oauthed and have parsed schemas, so get the marc in json from sierra:
     .then((schemas) => {
-      return processResources(records, schemas)
+      return getDetailedResource(records, schemas)
+    })
+    .then((results) => {
+        var resultsForStream = []
+        var successes = 0
+        var failures = 0
+        results.forEach((entry) => {
+            if(entry.error) {
+                callback(entry.error, `Failed to get marc in json for ${entry.record}`)        
+            }
+            else if(entry.record.id) {
+                resultsForStream.push(entry.record)
+            }
+        })
+        return resultsForStream
+    })
+    // Now post to kinesis
+    .then((marcInJsonRecords) => {  
+      if(isABib)  
+        return postToStream(marcInJsonRecords, config.get('bib.streamToPost'))
+      else
+        return postToStream(marcInJsonRecords, config.get('item.streamToPost'))    
     })
     // Now tell the lambda enviroment whether there was an error or not:
-    .then((results) => {
-      var successes = 0
-      var failures = 0
-      results.forEach((result, ind) => {
-        if (result.error) failures += 1
-        else successes += 1
-      })
-      var error = null
-      if (failures > 0) {
-        error = `${failures} failed`
-        var errorDetail = {'details': error}
-        log.error({APP_ERROR: errorDetail})
-      }
-      callback(error, `Wrote ${records.length}; Succeeded: ${successes} Failures: ${failures}`)
+    .then((resultPosted) => {
+        if(resultPosted.sent !== resultPosted.received)
+            log.error({APP_ERROR: `records sent: ${resultPosted.sent}, received: ${resultPosted.received}`})
     })
     .catch((error) => {
       var errorDetail = {'message': error, 'details': error}
@@ -79,35 +88,27 @@ var getSchemas = () => {
   }
   // Otherwise, fetch it for first time:
   var schemaReadingStream = null
-  var schemaPostingStream = null
   if (isABib) {
     schemaReadingStream = config.get('bib.schemaReadingStream')
-    schemaPostingStream = config.get('bib.schemaPostingStream')
   } else {
     schemaReadingStream = config.get('item.schemaReadingStream')
-    schemaPostingStream = config.get('item.schemaPostingStream')
   }
   return Promise.all([
-    schemaHelper.schema(schemaReadingStream),
-
-    schemaHelper.schema(schemaPostingStream)
-
+    schemaHelper.schema(schemaReadingStream)
   ])
-      .then((allSchemas) => {
+    .then((allSchemas) => {
         log.debug('Sending all schemas')
         CACHE[SCHEMAREADINGSTREAM] = allSchemas[0]
-        CACHE[SCHEMAPOSTINGSTREAM] = allSchemas[1]
         return Promise.resolve(CACHE)
-      })
-      .catch((e) => {
+    })
+    .catch((error) => {
         log.error('Error occurred while getting schemas')
-        return Promise.reject(e)
-      }
-    )
+        return Promise.reject(error)
+    })
 }
 
 // process resources
-var processResources = (records, schemas) => {
+var getDetailedResource = (records, schemas) => {
   return Promise.all(
     records.map((record) => {
       var data = record.kinesis.data
@@ -115,54 +116,53 @@ var processResources = (records, schemas) => {
       if (isABib) {
         return resourceInDetail(jsonData.id, true)
           .then((sierraResource) => {
-            if (sierraResource != null) {
+            if (sierraResource) {
               var bib = sierraResource
               bib['nyplSource'] = NYPLSOURCE
               bib['nyplType'] = 'bib'
-              var stream = config.get('bib.stream')
-              return streams.postResourcesToStream(bib, stream, schemas[SCHEMAPOSTINGSTREAM])
-                .then(() => ({ error: null, bib: bib }))
-                .catch((e) => {
-                  log.error('Error occurred posting to kinesis - ' + e)
-                  return ({ error: e, bib: bib })
-                })
+              return Promise.resolve(({ error: null, record: bib })) 
             } else {
-              return Promise.resolve(() => {
-                log.error('No valid bib obtained')
-              })
+                log.error(`No valid bib obtained for ${jsonData.id}`)
+                return Promise.resolve({error: null, record: jsonData.id})
             }
-          })
-          .catch((e) => {
+        })
+        .catch((e) => {
             log.error('Error with bib: ' + jsonData.id, e)
-            return { error: e, bib: jsonData.id }
+            return { error: e, record: jsonData.id }
           })
       } else {
         return resourceInDetail(jsonData.id, false)
           .then((sierraResource) => {
-            if (sierraResource != null) {
+            if (sierraResource) {
               var item = sierraResource
               item['nyplSource'] = NYPLSOURCE
               item['nyplType'] = 'item'
-              var stream = config.get('item.stream')
-              return streams.postResourcesToStream(item, stream, schemas[SCHEMAPOSTINGSTREAM])
-                .then(() => ({ error: null, item }))
-                .catch((e) => {
-                  log.error('Error occurred posting to kinesis - ' + e)
-                  return ({ error: e, item: item })
-                })
+              return Promise.resolve(({ error: null, record: item })) 
             } else {
-              return Promise.resolve(() => {
-                log.error('No valid item obtained')
-              })
+                log.error(`No valid item obtained for ${jsonData.id}`)
+                return Promise.resolve({error: null, record: jsonData.id})
             }
           })
           .catch((e) => {
-            log.error('Error with item: ', e)
-            return { error: e, item: jsonData.id }
+            log.error('Error with item: ' + jsonData.id, e)
+            return { error: e, record: jsonData.id }
           })
       }
     })
   )
+}
+
+var postToStream = (records, stream) => {
+    return new Promise((resolve, reject) => {
+        streams.streamPoster(records, stream)
+        .then(() => {
+            resolve({error: null, records: records})
+        })
+        .catch((error) => {
+            log.error('Error occurred posting to kinesis - ' + error)
+            reject({error: error, records: records})
+        })
+    })
 }
 
 // use avro to deserialize
