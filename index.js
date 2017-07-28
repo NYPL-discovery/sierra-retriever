@@ -1,5 +1,5 @@
 
-const avro = require('avsc')
+const avro = require('avro-js')
 const wrapper = require('@nypl/sierra-wrapper')
 const config = require('config')
 const retry = require('retry')
@@ -163,7 +163,7 @@ var avroDecodedData = (schemaData, record) => {
   const type = avro.parse(schemaData)
   var decoded = new Buffer(record, 'base64')
   var verify = type.fromBuffer(decoded)
-  return JSON.parse(verify)
+  return verify
 }
 
 // get full bib/item details for each bib/item id
