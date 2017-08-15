@@ -63,7 +63,7 @@ var kinesisHandler = function (records, context, callback) {
     })
     // Now tell the lambda enviroment whether there was an error or not:
     .then((resultPosted) => {
-      if (resultPosted.sent !== resultPosted.received) { log.error({APP_ERROR: `records sent: ${resultPosted.sent}, received: ${resultPosted.received}`}) }
+      log.info('Completed processing records - ', resultPosted.records.length)
     })
     .catch((error) => {
       var errorDetail = {'message': error, 'details': error}
