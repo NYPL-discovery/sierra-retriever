@@ -245,23 +245,6 @@ var getResult = (errorResourceReq, results, isBib, resourceId, operation, attemp
         __accessToken = null
         log.error('This is a token issue')
         reject(errorResourceReq)
-        if (isBib) {
-          log.info('Number of attempts made for bib ' + resourceId + ' - ' + attemptNumber)
-        } else {
-          log.info('Number of attempts made for item ' + resourceId + ' - ' + attemptNumber)
-        }
-        getWrapperAccessToken()
-            .then((accessToken) => {
-              if (operation.retry(errorResourceReq)) {
-                return
-              }
-              if (isBib) {
-                log.error('Error occurred while getting bib info')
-              } else {
-                log.error('Error occurred while getting item info')
-              }
-              reject(errorResourceReq)
-            })
       } else if (errorInJson.httpStatus === 400) {
         log.error({APP_ERROR: errorResourceReq}, 'Bad request sent to retrieve resource')
         resolve(sierraResource)
