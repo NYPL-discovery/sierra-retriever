@@ -10,6 +10,8 @@ var streams = require('./lib/stream')
 const SCHEMAREADINGSTREAM = 'schemaReadingStream'
 const NYPLSOURCE = 'sierra-nypl'
 
+var __accessToken = null
+
 const isABib = process.env.RETRIEVAL_TYPE === 'bib'
 var log = isABib ? bunyan.createLogger({name: 'sierra-bib-retriever'}) : bunyan.createLogger({name: 'sierra-item-retriever'})
 
@@ -240,7 +242,9 @@ var getResult = (errorResourceReq, results, isBib, resourceId, operation, attemp
       var errorInJson = JSON.parse(errorResourceReq)
       log.error('Error httpstatus -' + errorInJson.httpStatus + '-')
       if (errorInJson.httpStatus === 401) {
-        log.error('This is a token issue. Going to renew token')
+        __accessToken = null
+        log.error('This is a token issue')
+        reject(errorResourceReq)
         if (isBib) {
           log.info('Number of attempts made for bib ' + resourceId + ' - ' + attemptNumber)
         } else {
@@ -277,11 +281,9 @@ var getResult = (errorResourceReq, results, isBib, resourceId, operation, attemp
   })
 }
 
-var __accessToken = null
-
 // get wrapper access token
 var getWrapperAccessToken = () => {
-  if (__accessToken && (Math.floor(Date.now() / 1000) - wrapper.authorizedTimestamp) < 3600) {
+  if (__accessToken) {
     return Promise.resolve(__accessToken)
   }
 
