@@ -10,6 +10,8 @@ var streams = require('./lib/stream')
 const SCHEMAREADINGSTREAM = 'schemaReadingStream'
 const NYPLSOURCE = 'sierra-nypl'
 
+var __accessToken = null
+
 const isABib = process.env.RETRIEVAL_TYPE === 'bib'
 var log = isABib ? bunyan.createLogger({name: 'sierra-bib-retriever'}) : bunyan.createLogger({name: 'sierra-item-retriever'})
 
@@ -61,7 +63,7 @@ var kinesisHandler = function (records, context, callback) {
     })
     // Now tell the lambda enviroment whether there was an error or not:
     .then((resultPosted) => {
-      if (resultPosted.sent !== resultPosted.received) { log.error({APP_ERROR: `records sent: ${resultPosted.sent}, received: ${resultPosted.received}`}) }
+      log.info('Completed processing records - ', resultPosted.records.length)
     })
     .catch((error) => {
       var errorDetail = {'message': error, 'details': error}
@@ -240,24 +242,9 @@ var getResult = (errorResourceReq, results, isBib, resourceId, operation, attemp
       var errorInJson = JSON.parse(errorResourceReq)
       log.error('Error httpstatus -' + errorInJson.httpStatus + '-')
       if (errorInJson.httpStatus === 401) {
-        log.error('This is a token issue. Going to renew token')
-        if (isBib) {
-          log.info('Number of attempts made for bib ' + resourceId + ' - ' + attemptNumber)
-        } else {
-          log.info('Number of attempts made for item ' + resourceId + ' - ' + attemptNumber)
-        }
-        getWrapperAccessToken()
-            .then((accessToken) => {
-              if (operation.retry(errorResourceReq)) {
-                return
-              }
-              if (isBib) {
-                log.error('Error occurred while getting bib info')
-              } else {
-                log.error('Error occurred while getting item info')
-              }
-              reject(errorResourceReq)
-            })
+        __accessToken = null
+        log.error('This is a token issue')
+        reject(errorResourceReq)
       } else if (errorInJson.httpStatus === 400) {
         log.error({APP_ERROR: errorResourceReq}, 'Bad request sent to retrieve resource')
         resolve(sierraResource)
@@ -277,11 +264,9 @@ var getResult = (errorResourceReq, results, isBib, resourceId, operation, attemp
   })
 }
 
-var __accessToken = null
-
 // get wrapper access token
 var getWrapperAccessToken = () => {
-  if (__accessToken && (Math.floor(Date.now() / 1000) - wrapper.authorizedTimestamp) < 3600) {
+  if (__accessToken) {
     return Promise.resolve(__accessToken)
   }
 
