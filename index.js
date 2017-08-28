@@ -59,7 +59,7 @@ var kinesisHandler = function (records, context, callback) {
     })
     // Now post to kinesis
     .then((marcInJsonRecords) => {
-      if (isABib) { return postToStream(marcInJsonRecords, config.get('bib.streamToPost')) } else { return postToStream(marcInJsonRecords, config.get('item.streamToPost')) }
+      if (isABib) { return postToStream(marcInJsonRecords, config.get('bib.streamToPost'), config.get('bib.schemaPostingStream')) } else { return postToStream(marcInJsonRecords, config.get('item.streamToPost'), config.get('item.schemaPostingStream')) }
     })
     // Now tell the lambda enviroment whether there was an error or not:
     .then((resultPosted) => {
@@ -147,9 +147,9 @@ var getDetailedResource = (records, schemas) => {
   )
 }
 
-var postToStream = (records, stream) => {
+var postToStream = (records, stream, schemaName) => {
   return new Promise((resolve, reject) => {
-    streams.streamPoster(records, stream)
+    streams.streamPoster(records, stream, schemaName)
         .then(() => {
           resolve({error: null, records: records})
         })

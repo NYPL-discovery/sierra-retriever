@@ -2,13 +2,15 @@
     "key": "",
     "secret": "",
     "base": "https://ilsstaff.nypl.org/iii/sierra-api/v3/",
-    "nyplBaseUrl": "https://api.nypltech.org/api/v0.1",
+    "nyplBaseUrl": "https://platform.nypl.org/api/v0.1",
     "bib":{
         "schemaReadingStream": "SierraBibRetrievalRequest",
-        "streamToPost": "BibPostRequest"
+        "schemaPostingStream": "BibPostRequest",
+        "streamToPost": "BibPostRequest-production"
     },
     "item":{
         "schemaReadingStream": "SierraItemRetrievalRequest",
-        "streamToPost": "ItemPostRequest"
+        "schemaPostingStream": "ItemPostRequest",
+        "streamToPost": "ItemPostRequest-production"
     }
 }
