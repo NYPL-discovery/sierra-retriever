@@ -13,8 +13,6 @@ const SCHEMAREADINGSTREAM = 'schemaReadingStream'
 const NYPLSOURCE = 'sierra-nypl'
 const PARALLEL_LIMIT = parseInt(process.env.PARALLEL_LIMIT) || 3
 
-console.log(PARALLEL_LIMIT)
-
 var __accessToken = null
 
 const isABib = process.env.RETRIEVAL_TYPE === 'bib'
