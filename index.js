@@ -5,10 +5,15 @@ const config = require('config')
 const retry = require('retry')
 const bunyan = require('bunyan')
 const schemaHelper = require('./lib/schema-helper')
+const async = require('async');
+
 var streams = require('./lib/stream')
 
 const SCHEMAREADINGSTREAM = 'schemaReadingStream'
 const NYPLSOURCE = 'sierra-nypl'
+const PARALLEL_LIMIT = parseInt(process.env.PARALLEL_LIMIT) || 3
+
+console.log(PARALLEL_LIMIT)
 
 var __accessToken = null
 
@@ -104,47 +109,64 @@ var getSchemas = () => {
 
 // process resources
 var getDetailedResource = (records, schemas) => {
-  return Promise.all(
-    records.map((record) => {
-      var data = record.kinesis.data
-      var jsonData = avroDecodedData(schemas[SCHEMAREADINGSTREAM], data)
-      if (isABib) {
+  var asyncTasks = [];
+
+  records.map((record) => {
+    var data = record.kinesis.data
+    var jsonData = avroDecodedData(schemas[SCHEMAREADINGSTREAM], data)
+
+    if (isABib) {
+      asyncTasks.push((callback) => {
         return resourceInDetail(jsonData.id, true)
           .then((sierraResource) => {
             if (sierraResource) {
               var bib = sierraResource
               bib['nyplSource'] = NYPLSOURCE
               bib['nyplType'] = 'bib'
-              return Promise.resolve(({ error: null, record: bib }))
+
+              callback(null, { error: null, record: bib })
             } else {
               log.error(`No valid bib obtained for ${jsonData.id}`)
-              return Promise.resolve({error: null, record: jsonData.id})
+              callback({ error: null, record: jsonData.id })
             }
           })
-        .catch((e) => {
-          log.error('Error with bib: ' + jsonData.id, e)
-          return { error: e, record: jsonData.id }
-        })
-      } else {
+          .catch((e) => {
+            log.error('Error with bib: ' + jsonData.id, e)
+            callback({ error: e, record: jsonData.id })
+          })
+      })
+    } else {
+      asyncTasks.push((callback) => {
         return resourceInDetail(jsonData.id, false)
           .then((sierraResource) => {
             if (sierraResource) {
               var item = sierraResource
               item['nyplSource'] = NYPLSOURCE
               item['nyplType'] = 'item'
-              return Promise.resolve(({ error: null, record: item }))
+
+              callback(null, { error: null, record: item })
             } else {
               log.error(`No valid item obtained for ${jsonData.id}`)
-              return Promise.resolve({error: null, record: jsonData.id})
+              callback({error: null, record: jsonData.id})
             }
           })
           .catch((e) => {
             log.error('Error with item: ' + jsonData.id, e)
-            return { error: e, record: jsonData.id }
+            callback({ error: e, record: jsonData.id })
           })
+      })
+    }
+  })
+
+  return new Promise((resolve, reject) => {
+    async.parallelLimit(asyncTasks, PARALLEL_LIMIT, (error, results) => {
+      if (error) {
+        reject(error)
       }
+
+      resolve(results)
     })
-  )
+  })
 }
 
 var postToStream = (records, stream, schemaName) => {
@@ -220,7 +242,6 @@ var getResource = (errorResourceReq, results, isBib, resourceId, operation, atte
     getResult(errorResourceReq, results, isBib, resourceId, operation, attemptNumber)
             .then((sierraResource) => {
               if (sierraResource != null) {
-                log.info({entry: sierraResource.resource})
                 resolve(sierraResource.resource)
               } else {
                 log.error('No resource returned from results')

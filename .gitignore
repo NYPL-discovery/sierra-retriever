@@ -38,5 +38,11 @@ jspm_packages
 # Optional REPL history
 .node_repl_history
 
+.lambda
+
 # Local configuration file
 config/local.json
+config/bib-production.env
+config/bib-qa.env
+config/item-production.env
+config/item-qa.env

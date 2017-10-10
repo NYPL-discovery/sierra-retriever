@@ -4,7 +4,9 @@
   "description": "This service reads sierra bib/item ids from the Bib/Item request stream, retrieves those records from the sierra-wrapper (https://www.npmjs.com/package/sierra-wrapper) and publishes them to the bib/item poster Stream",
   "main": "index.js",
   "scripts": {
-    "test": "mocha test"
+    "test": "mocha test",
+    "deploy-bib-production": "./node_modules/.bin/node-lambda deploy -n SierraBibRetrieverRequest -e production -f ./config/bib-production.env --role arn:aws:iam::946183545209:role/lambda-full-access --profile nypl-digital-dev",
+    "deploy-item-production": "./node_modules/.bin/node-lambda deploy -n SierraItemRetrieverRequest -e production -f ./config/item-production.env --role arn:aws:iam::946183545209:role/lambda-full-access --profile nypl-digital-dev"
   },
   "repository": {
     "type": "git",
@@ -18,6 +20,7 @@
   "dependencies": {
     "@nypl/nypl-streams-client": "^0.1.2",
     "@nypl/sierra-wrapper": "0.2.0",
+    "async": "^2.5.0",
     "avsc": "^4.1.11",
     "bunyan": "^1.8.10",
     "config": "^1.25.1",
