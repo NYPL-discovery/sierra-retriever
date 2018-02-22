@@ -125,7 +125,7 @@ var getDetailedResource = (records, schemas) => {
               callback(null, { error: null, record: bib })
             } else {
               log.error(`No valid bib obtained for ${jsonData.id}`)
-              callback({ error: null, record: jsonData.id })
+              callback(null, { error: null, record: jsonData.id })
             }
           })
           .catch((e) => {
