@@ -145,7 +145,7 @@ var getDetailedResource = (records, schemas) => {
               callback(null, { error: null, record: item })
             } else {
               log.error(`No valid item obtained for ${jsonData.id}`)
-              callback({error: null, record: jsonData.id})
+              callback(null, {error: null, record: jsonData.id})
             }
           })
           .catch((e) => {
