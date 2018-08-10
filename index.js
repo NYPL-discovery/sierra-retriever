@@ -35,8 +35,9 @@ var kinesisHandler = function (records, context, callback) {
   var conf = {
     key: config.get('key'),
     secret: config.get('secret'),
-    base: config.get('base')
+    base: config.get('base')+process.env.API_VERSION+'/'
   }
+  console.log('conf: ', conf)
   wrapper.loadConfig(conf)
 
   // Make sure wrapper_accessToken is set:
@@ -62,6 +63,8 @@ var kinesisHandler = function (records, context, callback) {
     })
     // Now post to kinesis
     .then((marcInJsonRecords) => {
+      const fs = require('fs')
+      fs.writeFileSync(`v${process.env.API_VERSION}-result.json`, JSON.stringify(marcInJsonRecords, null, 2), ()=>{})
       if (isABib) { return postToStream(marcInJsonRecords, config.get('bib.streamToPost'), config.get('bib.schemaPostingStream')) } else { return postToStream(marcInJsonRecords, config.get('item.streamToPost'), config.get('item.schemaPostingStream')) }
     })
     // Now tell the lambda enviroment whether there was an error or not:
