@@ -1,5 +1,6 @@
 # Summary
-The purpose of this service is to read sierra bib/item ids from the SierraBibRequest/SierraItemRequest stream, retrieves those records from the sierra-wrapper (https://www.npmjs.com/package/sierra-wrapper) and publishes them to the SierraBibPostRequest/SierraItemPostRequest Stream
+
+The purpose of this service is to read sierra bib/item ids from the SierraBibRetriever/SierraItemRetriever stream, retrieves those records from the sierra-wrapper (https://www.npmjs.com/package/sierra-wrapper) and publishes them to the BibPostRequest/ItemPostRequest Stream
 
 # Setup
 1. Clone the repo to your local machine
@@ -13,8 +14,8 @@ The purpose of this service is to read sierra bib/item ids from the SierraBibReq
     }
     ```
     local.json file should not be checked in and should be part of gitignore.
-    
-4. In your .env file provide values as needed, here is a sample - 
+
+4. In your .env file provide values as needed, here is a sample -
     ```
     AWS_ENVIRONMENT=development
     AWS_ACCESS_KEY_ID=APELOMDIH07AM7VROR4X
@@ -32,7 +33,7 @@ The purpose of this service is to read sierra bib/item ids from the SierraBibReq
     AWS_VPC_SUBNETS=
     AWS_VPC_SECURITY_GROUPS=
     EXCLUDE_GLOBS="event.json"
-    PACKAGE_DIRECTORY=build 
+    PACKAGE_DIRECTORY=build
     ```
 
 5. In your deploy.env file, give the retrieval type as follows:
@@ -44,7 +45,5 @@ RETRIEVAL_TYPE=bib (change to bib/item based on your need)
 Now run the following command, node-lambda run -f deploy.env
 
 # Deployment
-If the .env file is filled with the right values, then 
+If the .env file is filled with the right values, then
 run, node-lambda deploy. Then add kinesis stream trigger to the lambda function
-
-

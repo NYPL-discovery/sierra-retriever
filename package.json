@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "mocha test",
+    "deploy-bib-development": "./node_modules/.bin/node-lambda deploy -n SierraBibRetrieverRequest -e development -f ./config/bib-development.env --role arn:aws:iam::224280085904:role/lambda_basic_execution --profile nypl-sandbox",
     "deploy-bib-production": "./node_modules/.bin/node-lambda deploy -n SierraBibRetrieverRequest -e production -f ./config/bib-production.env --role arn:aws:iam::946183545209:role/lambda-full-access --profile nypl-digital-dev",
     "deploy-item-production": "./node_modules/.bin/node-lambda deploy -n SierraItemRetrieverRequest -e production -f ./config/item-production.env --role arn:aws:iam::946183545209:role/lambda-full-access --profile nypl-digital-dev"
   },
@@ -25,6 +26,7 @@
     "bunyan": "^1.8.10",
     "config": "^1.25.1",
     "highland": "^2.10.2",
+    "node-lambda": "^0.11.7",
     "request": "^2.81.0",
     "retry": "^0.10.1",
     "standard": "^10.0.0"
