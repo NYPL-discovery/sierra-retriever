@@ -15,7 +15,8 @@ using kinesify-data (see kinesify-data.js for usage)
 
 You can run:
 
-```NODE_CONFIG_ENV=[development|production] ./node_modules/.bin/node-lambda run [-j newEvent.json] -f config/[item|bib]-[environment]
+```
+NODE_CONFIG_ENV=[development|production] ./node_modules/.bin/node-lambda run [-j newEvent.json] -f config/[item|bib]-[environment]
 ```
 
 If everything is working you will get bunyan logs up until the lambda attempts to write to the stream, where it
@@ -24,5 +25,6 @@ will fail.
 # Deployment
 To deploy, run:
 
-```npm run deploy-[bib|item]-[development|production]
+```
+npm run deploy-[bib|item]-[development|production]
 ```
