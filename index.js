@@ -141,7 +141,6 @@ var getDetailedResource = (records, schemas) => {
               var item = sierraResource
               item['nyplSource'] = NYPLSOURCE
               item['nyplType'] = 'item'
-
               callback(null, { error: null, record: item })
             } else {
               log.error(`No valid item obtained for ${jsonData.id}`)
@@ -161,7 +160,6 @@ var getDetailedResource = (records, schemas) => {
       if (error) {
         reject(error)
       }
-
       resolve(results)
     })
   })
