@@ -15,10 +15,8 @@ describe('Tests Bib retriveal', function () {
   this.timeout(150000)
   it('Request 25 bibs', (done) => {
     wrapper.requestBibs(someBibs,(error,results) =>{
-      console.log(results)
       results.length.should.equal(25)
       done()
     })
   })
 })
-
