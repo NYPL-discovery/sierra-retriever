@@ -1,6 +1,6 @@
 {
-    "key": "",
-    "secret": "",
+    "key": "this should be a sierra key",
+    "secret": "this should be a sierra secret",
     "base": "https://ilsstaff.nypl.org/iii/sierra-api/v3/",
     "nyplBaseUrl": "https://platform.nypl.org/api/v0.1",
     "bib":{
