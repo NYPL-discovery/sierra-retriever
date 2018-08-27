@@ -5,10 +5,10 @@
   "main": "index.js",
   "scripts": {
     "test": "mocha test",
-    "deploy-bib-development": "NODE_CONFIG_ENV=development ./node_modules/.bin/node-lambda deploy -n SierraBibRetrieverRequest -e development -f ./config/bib-development.env --role arn:aws:iam::224280085904:role/lambda_basic_execution --profile nypl-sandbox -S config/event-sources-bib-development.json",
-    "deploy-item-development": "NODE_CONFIG_ENV=development ./node_modules/.bin/node-lambda deploy -n SierraItemRetrieverRequest -e development -f ./config/item-development.env --role arn:aws:iam::224280085904:role/lambda_basic_execution --profile nypl-sandbox -S config/event-sources-item-development.json",
+    "deploy-bib-development": "./node_modules/.bin/node-lambda deploy -n SierraBibRetrieverRequest -e development -f ./config/bib-development.env --role arn:aws:iam::224280085904:role/lambda_basic_execution --profile nypl-sandbox -S config/event-sources-bib-development.json",
+    "deploy-item-development": "./node_modules/.bin/node-lambda deploy -n SierraItemRetrieverRequest -e development -f ./config/item-development.env --role arn:aws:iam::224280085904:role/lambda_basic_execution --profile nypl-sandbox -S config/event-sources-item-development.json",
     "deploy-bib-qa": "./node_modules/.bin/node_lambda deploy -n SierraBibRetrieverRequest -e qa -f ./config/bib-qa.env --role arn:aws:iam::946183545209:role/lambda-full-access  -b subnet-21a3b244, subnet-f35de0a9 -g sg-aa74f1db --profile nypl-digital-dev",
-    "deploy-item-qa": "",
+    "deploy-item-qa": "./node_modules/.bin/node_lambda deploy -n SierraItemRetrieverRequest -e qa -f ./config/item-qa.env --role arn:aws:iam::946183545209:role/lambda-full-access  -b subnet-21a3b244, subnet-f35de0a9 -g sg-aa74f1db --profile nypl-digital-dev",
     "deploy-bib-production": "./node_modules/.bin/node-lambda deploy -n SierraBibRetrieverRequest -e production -f ./config/bib-production.env --role arn:aws:iam::946183545209:role/lambda-full-access --profile nypl-digital-dev",
     "deploy-item-production": "./node_modules/.bin/node-lambda deploy -n SierraItemRetrieverRequest -e production -f ./config/item-production.env --role arn:aws:iam::946183545209:role/lambda-full-access --profile nypl-digital-dev"
   },
