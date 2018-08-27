@@ -8,6 +8,22 @@ The purpose of this service is to read sierra bib/item ids from the SierraBibRet
 2. Assuming you have node installed properly in your machine, run npm install
 3. Ask a coworker for appropriate environment.json files
 
+### Configuration files
+
+We use several different configuration files with different roles:
+
+1. `config/[bib|item]-[environment].env`:
+
+  Set environment variables. These are versioned and should not require changes
+
+2. `config/[environment].json`:
+
+  Overwrite default.json with appropriate secrets and endpoints, see default.json for correct format and sample data. Used by [the config module](https://www.npmjs.com/package/config) to read variables for runtime configuration
+
+3. `.env`:
+
+  Used by node-lambda to configure AWS lambda environment (subnets, security groups, region, etc). Largely overwritten by specific scripts in package.json
+
 ## GIT Workflow
 
 We follow a [feature-branch](https://www.atlassian.com/git/tutorials/comparing-workflows/feature-branch-workflow) workflow. Our branches, ordered from least-stable to most stable are:
