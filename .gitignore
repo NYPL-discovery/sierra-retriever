@@ -42,9 +42,8 @@ jspm_packages
 
 # Local configuration file
 config/local.json
-config/bib-production.env
-config/bib-qa.env
-config/item-production.env
-config/item-qa.env
+config/development.json
+config/qa.json
+config/production.json
 
 deploy.env
