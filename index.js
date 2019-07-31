@@ -206,26 +206,53 @@ var resourceInDetail = (id, isBib) => {
           }
           getResource(errorBibReq, results, true, id, operation, currentAttempt)
             .then((resource) => {
+              if (currentAttempt > 1) {
+                log.info({ message: `Retry attempt ${currentAttempt} succeeded for bib ${id}` })
+              }
               resolve(resource)
             })
               .catch((error) => {
-                reject(error)
+                // If our retry-operation wants to try again, allow it:
+                if (operation.retry(error)) {
+                  log.info({ message: `Retrying fetch for bib ${id}, attempt ${currentAttempt}` })
+                  return
+                }
+                // Otherwise, we must have exhausted retries, so fail hard:
+                else reject(error)
               })
         })
       } else {
-        log.info('Requesting for item info')
         var itemIds = [id]
+        log.info(`Requesting for item ${id}`)
         wrapper.requestMultiItemBasic(itemIds, (errorItemReq, results) => {
+
           if (errorItemReq) {
-            var errorDetail = {message: 'Error occurred while calling sierra api for item', detail: JSON.parse(errorItemReq)}
+            let detail = errorItemReq
+            // Network errors may produce errors that are not stringified json
+            try { detail = JSON.parse(detail) } catch (e) {}
+            var errorDetail = {message: 'Error occurred while calling sierra api for item', detail }
             log.error({API_ERROR: errorDetail})
           }
           getResource(errorItemReq, results, false, itemIds, operation, currentAttempt)
             .then((resource) => {
+              if (currentAttempt > 1) {
+                log.info({ message: `Retry attempt ${currentAttempt} succeeded for item ${id}` })
+              }
               resolve(resource)
             })
               .catch((error) => {
-                reject(error)
+                /*
+                 * On use of operation.retry:
+                 * > Returns false when no error value is given, or the maximum amount of retries has been reached.
+                 * > Otherwise it returns true, and retries the operation after the timeout for the current attempt number.
+                 */
+                // If our retry-operation wants to try again, allow it:
+                if (operation.retry(error)) {
+                  log.info({ message: `Retrying fetch for item ${id}, attempt ${currentAttempt}` })
+                  return
+                }
+                // Otherwise, we must have exhausted retries, so fail hard:
+                else reject(error)
               })
         })
       }
@@ -256,7 +283,9 @@ var getResult = (errorResourceReq, results, isBib, resourceId, operation, attemp
   return new Promise((resolve, reject) => {
     var sierraResource = null
     if (errorResourceReq) {
-      var errorInJson = JSON.parse(errorResourceReq)
+      var errorInJson = errorResourceReq
+      // Network errors may produce errors that are not stringified json
+      try { errorInJson = JSON.parse(errorInJson) } catch (e) {}
       log.error('Error httpstatus -' + errorInJson.httpStatus + '-')
       if (errorInJson.httpStatus === 401) {
         __accessToken = null
