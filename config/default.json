@@ -10,6 +10,7 @@
     },
     "item":{
         "schemaReadingStream": "SierraItemRetrievalRequest",
-        "schemaPostingStream": "ItemPostRequest"
+        "schemaPostingStream": "ItemPostRequest",
+        "streamToPost": "ItemPostRequest-production"
     }
 }
