@@ -1,15 +1,22 @@
-/** Usage: node kinesify-data [id] [Sierra(Bib|Item)RetrievalRequest] to write an event to newEvent corresponding
-to the bib or item with that id
-example node kinesify-data 36007311 SierraItemRetrievalRequest
+/**
+ * Populate newEvent.json with bib/item ids of your choice
+ *
+ * Usage: node kinesify-data [id(s)] [Sierra(Bib|Item)RetrievalRequest]
+ *
+ * Examples:
+ *   // This builds an event for a single item:
+ *   node kinesify-data 36007311 SierraItemRetrievalRequest
+ *
+ *   // This builds an event for multiple items:
+ *   node kinesify-data 36007311,36007312,36007313 SierraItemRetrievalRequest
 */
 
 const fs = require('fs')
 const NyplClient = require('@nypl/nypl-data-api-client')
 var client = new NyplClient({ base_url: 'https://platform.nypl.org/api/v0.1/' })
 var avroType
-const recordNumber = process.argv[2]
+const recordNumbers = process.argv[2].split(',')
 const schemaName = process.argv[3]
-let record = { id: recordNumber}
 kinesify = function (record, avroType) {
   // encode avro
   var buf
@@ -41,6 +48,10 @@ client.get(`current-schemas/${schemaName}`, { authenticate: false }).then((resp)
   // Now we can build an avro encoder by parsing the escaped "schema" prop:
   avroType = require('avsc').parse(JSON.parse(schema.schema))
 }).then(() => {
-  let json = JSON.stringify(kinesify(record, avroType), null, 2)
-  fs.writeFile('./newEvent.json', `{ \"Records\":\n [\n${json}\n] }`, () => {} )
+  const records = recordNumbers
+    .map((recordNumber) => ({ id: recordNumber }))
+    .map((recordNumberDocument) => kinesify(recordNumberDocument, avroType))
+
+  let json = JSON.stringify({ Records: records }, null, 2)
+  fs.writeFile('./newEvent.json', json)
 })
