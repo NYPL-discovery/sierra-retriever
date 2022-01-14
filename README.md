@@ -44,10 +44,43 @@ If you need to introduce/update the application code, you `SHOULD`:
 
 ## Testing
 
-Test suite is currently broken.
+Test suite is currently broken and has near zero coverage.
 
-To run locally, event.json is also added as part of the repo. You can also generate events
-using kinesify-data (see kinesify-data.js for usage)
+In lieu of a working test suite, you can validate the app by generating test events, invoking the lambda locally on those events, and examining the result.
+
+### Generating events
+
+See `kinesify-data.js` for generating event files containing arbitrary ids.
+
+For example to generate an event file containing three bib ids:
+```
+node kinesify-data 19149236,12579650,16005621 SierraBibRetrievalRequest
+```
+
+To generate a file with three item ids:
+```
+node kinesify-data 19149236,12579650,16005621 SierraItemRetrievalRequest
+```
+
+### Testing events locally using sam
+
+To test bibs, first monitor the `BibPostRequest-qa` stream using [stream-listener](https://github.com/NYPL-discovery/stream-listener)
+
+```
+node stream-listen --stream BibPostRequest-qa --decode --profile nypl-digital-dev --schema BibPostRequest --iterator LATEST
+```
+
+While that's running, build an `newEvent.json` containing bib ids and run:
+
+```
+sam local invoke -t sam.bib-qa.yml -e newEvent.json
+```
+
+Verify that three records are written to `BibPostRequest-qa` and they look plausibly like the correct records.
+
+Repeat by monitoring `ItemPostRequest-qa`, using `sam.item-qa.yml` and an event file with item ids to verify the app can handle items.
+
+### Running locally using node-lambda
 
 You can run:
 
@@ -57,7 +90,6 @@ NODE_CONFIG_ENV=[development|qa|production] ./node_modules/.bin/node-lambda run 
 
 If everything is working you will get bunyan logs up until the lambda attempts to write to the stream, where it
 will fail.
-
 
 ## Deployment
 

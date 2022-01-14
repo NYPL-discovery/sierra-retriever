@@ -53,5 +53,5 @@ client.get(`current-schemas/${schemaName}`, { authenticate: false }).then((resp)
     .map((recordNumberDocument) => kinesify(recordNumberDocument, avroType))
 
   let json = JSON.stringify({ Records: records }, null, 2)
-  fs.writeFile('./newEvent.json', json)
+  fs.writeFileSync('./newEvent.json', json)
 })
