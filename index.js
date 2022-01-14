@@ -181,7 +181,7 @@ var postToStream = (records, stream, schemaName) => {
 // use avro to deserialize
 var avroDecodedData = (schemaData, record) => {
   const type = avro.parse(schemaData)
-  var decoded = new Buffer(record, 'base64')
+  var decoded = Buffer.from(record, 'base64')
   var verify = type.fromBuffer(decoded)
   return JSON.parse(verify)
 }
