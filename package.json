@@ -24,7 +24,7 @@
   "dependencies": {
     "@nypl/nypl-streams-client": "^0.1.2",
     "@nypl/sierra-wrapper": "0.2.0",
-    "async": "^2.5.0",
+    "async": "^3.2.2",
     "avsc": "^4.1.11",
     "bunyan": "^1.8.10",
     "config": "^1.25.1",
