@@ -29,7 +29,7 @@
     "bunyan": "^1.8.10",
     "config": "^1.25.1",
     "highland": "^2.10.2",
-    "node-lambda": "^0.11.7",
+    "node-lambda": "^1.0.0",
     "request": "^2.81.0",
     "retry": "^0.10.1",
     "standard": "^10.0.0"
