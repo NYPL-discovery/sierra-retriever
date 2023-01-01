@@ -27,7 +27,7 @@
     "async": "^2.5.0",
     "avsc": "^4.1.11",
     "bunyan": "^1.8.10",
-    "config": "^1.25.1",
+    "config": "^3.3.8",
     "highland": "^2.10.2",
     "node-lambda": "^0.11.7",
     "request": "^2.81.0",
